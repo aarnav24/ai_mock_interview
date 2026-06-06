@@ -6,7 +6,6 @@ import cookieParser from "cookie-parser"
 import authRouter from "./routes/auth.route.js"
 import userRouter from "./routes/user.route.js"
 import interviewRouter from "./routes/interview.route.js"
-import expressWs from "express-ws"         
 import paymentRouter from "./routes/payment.route.js"
 import { handleDeepgramWebSocket } from "./controllers/deepgram.controller.js"
 import expressWs from "express-ws"
@@ -23,18 +22,12 @@ app.use(cors({
 }))
 app.use("/api/auth", authRouter)
 app.use("/api/user", userRouter)
-<<<<<<< HEAD
-app.use("/api/interview", interviewRouter)  
-// app.use("/api/deepgram", deepgramRouter)
-app.use("/api/payment", paymentRouter)
-=======
 app.use("/api/interview", interviewRouter)
 app.ws("/api/deepgram/live", (ws) => handleDeepgramWebSocket(ws))
 
 app.get("/health", (req, res) => {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() })
 })
->>>>>>> origin/deepgram-fix
 
 const PORT = process.env.PORT
 
