@@ -8,6 +8,7 @@ import userRouter from "./routes/user.route.js"
 import interviewRouter from "./routes/interview.route.js"
 // import deepgramRouter from "./routes/deepgram.route.js"
 import expressWs from "express-ws"         
+import paymentRouter from "./routes/payment.route.js"
 dotenv.config()
 
 const app = express()
@@ -23,6 +24,7 @@ app.use("/api/auth", authRouter)
 app.use("/api/user", userRouter)
 app.use("/api/interview", interviewRouter)  
 // app.use("/api/deepgram", deepgramRouter)
+app.use("/api/payment", paymentRouter)
 
 const PORT = process.env.PORT
 
