@@ -36,7 +36,7 @@ export const createOrder = async (req, res) => {
 
 export const verifyPayment = async (req, res) => {
     try {
-        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body
+        const {razorpay_order_id, razorpay_payment_id, razorpay_signature} = req.body
 
         const body = razorpay_order_id + "|" + razorpay_payment_id
 

@@ -70,7 +70,7 @@ const Pricing = () => {
         planId: plan.id,
         amount: amount,
         credits: plan.credits
-      }, {withCredentials: true})
+      }, {withCredentials: true} ) 
 
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
