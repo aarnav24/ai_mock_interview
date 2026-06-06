@@ -12,7 +12,6 @@ import { setUserData } from '../redux/userSlice'
 import axios from 'axios'
 import AuthModel from './AuthModel'
 
-
 const Navbar = () => {
     const { userData } = useSelector((state)=>state.user)
     const [showCreditPopup, setShowCreditPopup] = useState(false)
@@ -68,7 +67,7 @@ const Navbar = () => {
                             <p className="text-sm text-gray-600 mb-4">Need more credits to continue interviews?</p>
                             <button 
                             onClick={() => navigate("/pricing")}
-                            className="w-full bg-black text-white py-2 rounded-lg text-sm">Buy more credits</button>
+                            className="w-full bg-black text-white py-2 rounded-lg text-sm cursor-pointer">Buy more credits</button>
                         </div>
                     )}
                 </div>
@@ -92,10 +91,10 @@ const Navbar = () => {
                             <p className="text-md text-blue-500 font-medium mb-1">{userData?.name}</p>
                                 <button 
                                 onClick={() => navigate("/history")}
-                                className="w-full text-left text-sm py-3 hover:text-black text-gray-600">Interview History</button>
+                                className="w-full text-left text-sm py-3 hover:text-black text-gray-600 cursor-pointer">Interview History</button>
                                 <button 
                                 onClick={handleLogout}
-                                className="w-full text-left text-sm py-2 flex items-center gap-2 text-red-500">
+                                className="w-full text-left text-sm py-2 flex items-center gap-2 text-red-500 cursor-pointer">
                                     <HiOutlineLogout size={20} /> Logout
                                 </button>
                         </div>

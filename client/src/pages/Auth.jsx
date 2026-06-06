@@ -66,7 +66,7 @@ const Auth = ({isModel = false}) => {
             onClick={handleGoogleAuth}
             whileHover={{opacity:0.85, scale:1.04}}
             whileTap={{opacity:1, scale:0.97}}
-            className="w-full flex items-center justify-center gap-3 py-3 bg-black text-white rounded-full shadow-md"
+            className="w-full flex items-center justify-center gap-3 py-3 bg-black text-white rounded-full shadow-md cursor-pointer"
             >
                 <FcGoogle size={18}/> Continue with Google
             </motion.button>

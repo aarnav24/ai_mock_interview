@@ -67,7 +67,7 @@ const Home = () => {
                 }}
                 whileHover={{opacity:0.85, scale:1.04}}              
                 whileTap={{opacity:1, scale:0.97}}
-                className="bg-black text-white px-10 py-3 rounded-full hover:opacity-90 transition shadow-md">
+                className="bg-black text-white px-10 py-3 rounded-full hover:opacity-90 transition shadow-md cursor-pointer">
                   Start Interview
                 </motion.button>
 
@@ -81,7 +81,7 @@ const Home = () => {
                 }}
                 whileHover={{opacity:0.85, scale:1.04}}              
                 whileTap={{opacity:1, scale:0.97}}
-                className="border border-gray-300 px-10 py-3 rounded-full hover:bg-gray-100  transition">
+                className="border border-gray-300 px-10 py-3 rounded-full hover:bg-gray-100 transition cursor-pointer">
                   View History
                 </motion.button>
 
