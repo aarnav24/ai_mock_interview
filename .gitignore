@@ -1,6 +1,8 @@
 # Dependencies
 client/node_modules/
 server/node_modules/
+client/package-lock.json
+server/package-lock.json
 
 # Environment files
 client/.env
@@ -25,3 +27,18 @@ Thumbs.db
 
 # Cache
 .cache/
+# Added by code-review-graph
+.code-review-graph/
+.claude
+.cursor
+.cursorrules
+CLAUDE.md
+GEMINI.md
+AGENTS.md
+.windsurfrules
+.mcp.json
+.opencode.json
+.windsurf.json
+client/package-lock.json
+server/package-lock.json
+IMPROVEMENTS.md

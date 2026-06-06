@@ -20,6 +20,7 @@ const Step1SetUp = ({ onStart }) => {
     const [resumeText, setResumeText] = useState("")
     const [analysisDone, setAnalysisDone] = useState(false)
     const [analyzing, setAnalyzing] = useState(false)
+    const [errorMsg, setErrorMsg] = useState("")
 
     const handleUploadResume = async (req, res) => {
         if(!resumeFile || analyzing) return
@@ -45,18 +46,20 @@ const Step1SetUp = ({ onStart }) => {
 
     const handleStart = async () => {
         setLoading(true)
+        setErrorMsg("")
         try {
             const result = await axios.post(ServerUrl + "/api/interview/generate-questions", {role, experience, mode, resumeText, projects, skills}, {withCredentials: true})
-            console.log(result.data)
 
             if(userData) {
                 dispatch(setUserData({...userData, credits: result.data.creditsLeft}))
             }
             setLoading(false)
             onStart(result.data)
-            
+
         } catch (error) {
             setLoading(false)
+            const msg = error?.response?.data?.message || "Failed to start interview. Try again."
+            setErrorMsg(msg)
             console.error(error)
         }
     }
@@ -210,14 +213,17 @@ const Step1SetUp = ({ onStart }) => {
                         </motion.button>
 
                         {loading && (
-                            // <div className="w-full border-2 border-dashed border-green-300 bg-green-50 rounded-xl p-4 flex items-center justify-center font-medium text-green-700 ">
-                            //     ⏳ Preparing your personalized interview questions...
-                            // </div>
                             <div className="w-full border-2 border-dashed border-green-300 bg-green-50 rounded-xl p-4 flex items-center justify-center gap-3 font-medium text-green-700">
                                 <div className="w-5 h-5 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
                                 <span>
                                     Preparing your personalized interview questions...
                                 </span>
+                            </div>
+                        )}
+
+                        {errorMsg && (
+                            <div className="w-full border border-red-300 bg-red-50 text-red-600 rounded-xl p-4 text-sm font-medium text-center">
+                                {errorMsg}
                             </div>
                         )}
                     </div>

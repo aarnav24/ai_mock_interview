@@ -6,12 +6,12 @@ import cookieParser from "cookie-parser"
 import authRouter from "./routes/auth.route.js"
 import userRouter from "./routes/user.route.js"
 import interviewRouter from "./routes/interview.route.js"
-// import deepgramRouter from "./routes/deepgram.route.js"
-import expressWs from "express-ws"         
+import { handleDeepgramWebSocket } from "./controllers/deepgram.controller.js"
+import expressWs from "express-ws"
 dotenv.config()
 
 const app = express()
-expressWs(app)                         
+expressWs(app)
 
 app.use(express.json())
 app.use(cookieParser())
@@ -21,8 +21,12 @@ app.use(cors({
 }))
 app.use("/api/auth", authRouter)
 app.use("/api/user", userRouter)
-app.use("/api/interview", interviewRouter)  
-// app.use("/api/deepgram", deepgramRouter)
+app.use("/api/interview", interviewRouter)
+app.ws("/api/deepgram/live", (ws) => handleDeepgramWebSocket(ws))
+
+app.get("/health", (req, res) => {
+    res.status(200).json({ status: "ok", timestamp: new Date().toISOString() })
+})
 
 const PORT = process.env.PORT
 

@@ -15,7 +15,6 @@ const Step2Interview = ({ interviewData, onFinish }) => {
   const { interviewId, questions, userName } = interviewData
   const [isIntroPhase, setIsIntroPhase] = useState(true)
   const [isMicOn, setIsMicOn] = useState(false)
-  const recognitionRef = useRef(null)
   const [isAIPlaying, setIsAIPlaying] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answer, setAnswer] = useState("")
@@ -27,13 +26,19 @@ const Step2Interview = ({ interviewData, onFinish }) => {
   const [canAnswer, setCanAnswer] = useState(false)
   const [subtitle, setSubtitle] = useState("")
   const videoRef = useRef(null)
-  const isMicRunningRef = useRef(false)
   const currentQuestion = questions[currentIndex]
   const isMicOnRef = useRef(false)
+  const canAnswerRef = useRef(false)
+  const mediaRecorderRef = useRef(null)
+  const wsRef = useRef(null)
 
   useEffect(() => {
     isMicOnRef.current = isMicOn
   }, [isMicOn])
+
+  useEffect(() => {
+    canAnswerRef.current = canAnswer
+  }, [canAnswer])
 
   useEffect(() => {
     const loadVoices = () => {
@@ -165,75 +170,107 @@ const Step2Interview = ({ interviewData, onFinish }) => {
     return () => clearInterval(timer)
   }, [isIntroPhase, currentIndex, canAnswer])
 
-  useEffect(() => {
-    if (!("webkitSpeechRecognition" in window)) return
-
-    const recognition = new window.webkitSpeechRecognition()
-
-    recognition.lang = "en-US"
-    recognition.continuous = true
-    recognition.interimResults = false
-
-    recognition.onstart = () => {
-      isMicRunningRef.current = true
+  const startMic = async () => {
+    if (!canAnswerRef.current) {
+      console.warn("[mic] blocked — canAnswer is false (AI still speaking?)")
+      return
     }
-
-    recognition.onend = () => {
-      isMicRunningRef.current = false
+    if (isAIPlaying) {
+      console.warn("[mic] blocked — AI is playing")
+      return
     }
-
-    recognition.onerror = (event) => {
-      console.error("Speech recognition error:", event.error)
-      isMicRunningRef.current = false
-    }
-
-    recognition.onresult = (event) => {
-      const transcript =
-        event.results?.[event.results.length - 1]?.[0]?.transcript
-
-      if (!transcript) return
-
-      setAnswer((prev) => prev + " " + transcript)
-    }
-
-    recognitionRef.current = recognition
-
-    return () => {
-      recognition.stop()
-      recognition.abort()
-    }
-  }, [])
-
-  const startMic = () => {
-    if (!canAnswer || !recognitionRef.current || isMicRunningRef.current || isAIPlaying || isSubmitting || feedback) return
 
     try {
-      recognitionRef.current.start()
-    } catch {
-      return
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      console.log("[mic] got audio stream")
+
+      const ws = new WebSocket(`ws://localhost:8000/api/deepgram/live`)
+      wsRef.current = ws
+
+      ws.onopen = () => {
+        console.log("[mic] WS open — starting MediaRecorder")
+
+        const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", ""]
+          .find((t) => t === "" || MediaRecorder.isTypeSupported(t))
+
+        const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+        mediaRecorderRef.current = recorder
+
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0 && ws.readyState === WebSocket.OPEN) {
+            ws.send(e.data)
+          }
+        }
+
+        recorder.start(250)
+        console.log("[mic] recording started, mimeType:", recorder.mimeType)
+      }
+
+      let pendingText = ""
+      let silenceTimer = null
+
+      const flushPending = () => {
+        if (!pendingText.trim()) return
+        const toCommit = pendingText.trim()
+        pendingText = ""
+        setAnswer((prev) => prev ? prev + " " + toCommit : toCommit)
+      }
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data)
+          if (msg.type !== "transcript" || !msg.isFinal || !msg.transcript) return
+
+          pendingText += (pendingText ? " " : "") + msg.transcript
+
+          clearTimeout(silenceTimer)
+          silenceTimer = setTimeout(flushPending, 5000)
+        } catch {
+          // ignore malformed frames
+        }
+      }
+
+      ws.onerror = (err) => console.error("[mic] Deepgram WS error", err)
+
+      ws.onclose = (e) => {
+        console.log("[mic] WS closed", e.code, e.reason)
+        clearTimeout(silenceTimer)
+        flushPending()
+        stream.getTracks().forEach((t) => t.stop())
+      }
+
+    } catch (err) {
+      console.error("[mic] access error:", err)
+      setIsMicOn(false)
     }
   }
 
   const stopMic = () => {
-    if (!recognitionRef.current) return
-    if (!isMicRunningRef.current) return
-
-    recognitionRef.current.stop()
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop()
+      mediaRecorderRef.current = null
+    }
+    if (wsRef.current) {
+      wsRef.current.close()
+      wsRef.current = null
+    }
   }
 
   const toggleMic = () => {
-    if (isMicOn) stopMic()
-    else startMic()
-
-    setIsMicOn(prev => !prev)
+    if (isMicOn) {
+      stopMic()
+      setIsMicOn(false)
+    } else {
+      setIsMicOn(true)
+      startMic()
+    }
   }
 
   useEffect(() => {
-    if (canAnswer && isMicOn && !isAIPlaying
-    ) {
-      startMic()
+    if (isAIPlaying && isMicOn) {
+      stopMic()
     }
-  }, [canAnswer, isMicOn, isAIPlaying])
+  }, [isAIPlaying])
 
   const submitAnswer = async () => {
     if (isSubmitting || isAIPlaying) {
@@ -317,11 +354,7 @@ const Step2Interview = ({ interviewData, onFinish }) => {
 
   useEffect(() => {
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop()
-        recognitionRef.current.abort()
-      }
-
+      stopMic()
       window.speechSynthesis.cancel()
     }
   }, [])
