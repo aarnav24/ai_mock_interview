@@ -4,7 +4,6 @@ import { createOrder, verifyPayment } from "../controllers/payment.controller.js
 
 const paymentRouter = express.Router()
 
-
 paymentRouter.post("/order", isLoggedIn, createOrder)
 paymentRouter.post("/verify", isLoggedIn, verifyPayment)
 

@@ -24,6 +24,7 @@ app.use("/api/auth", authRouter)
 app.use("/api/user", userRouter)
 app.use("/api/interview", interviewRouter)
 app.ws("/api/deepgram/live", (ws) => handleDeepgramWebSocket(ws))
+app.use("/api/payment", paymentRouter)
 
 app.get("/health", (req, res) => {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() })
