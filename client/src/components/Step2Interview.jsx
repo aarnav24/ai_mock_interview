@@ -10,6 +10,7 @@ import { useEffect } from 'react'
 import axios from "axios"
 import { ServerUrl } from '../App'
 import { BsArrowRight } from 'react-icons/bs'
+import toast from "react-hot-toast"
 
 const Step2Interview = ({ interviewData, onFinish }) => {
   const { interviewId, questions, userName } = interviewData
@@ -257,6 +258,10 @@ const Step2Interview = ({ interviewData, onFinish }) => {
   }
 
   const toggleMic = () => {
+    if (isAIPlaying || !canAnswer) {
+      alert("Please wait until the interviewer finishes speaking.")
+      return
+    }
     if (isMicOn) {
       stopMic()
       setIsMicOn(false)
@@ -277,6 +282,7 @@ const Step2Interview = ({ interviewData, onFinish }) => {
       return
     }
 
+    stopMic()
     setIsSubmitting(true)
 
     try {
@@ -297,6 +303,7 @@ const Step2Interview = ({ interviewData, onFinish }) => {
       await speakText(result.data.feedback)
 
       setIsSubmitting(false)
+
     } catch (error) {
       console.error(error)
 
@@ -427,8 +434,18 @@ const Step2Interview = ({ interviewData, onFinish }) => {
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={toggleMic}
-              className="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-full bg-black text-white shadow-lg">
-              {isMicOn ? <FaMicrophone size={20} /> : <FaMicrophoneSlash size={20} />}
+              className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-full text-white shadow-lg ${isAIPlaying || !canAnswer
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : isMicOn
+                    ? "bg-emerald-500 cursor-pointer"
+                    : "bg-red-500 cursor-pointer"
+                }`}
+            >
+              {isMicOn ? (
+                <FaMicrophone size={20} />
+              ) : (
+                <FaMicrophoneSlash size={20} />
+              )}
             </motion.button>
             <motion.button
               onClick={submitAnswer}
