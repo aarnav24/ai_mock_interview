@@ -25,7 +25,7 @@ const Auth = ({isModel = false}) => {
             dispatch(setUserData(result.data))
             
         } catch (error) {
-            console.error(error)
+            console.error(error.message)
             dispatch(setUserData(null))
         }
     }
