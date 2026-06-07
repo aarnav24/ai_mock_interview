@@ -1,32 +1,32 @@
-import User from "../models/user.model.js"
-import genToken from "../config/token.js"
+import { AuthService } from "../services/AuthService.js"
 
-export class AuthService {
-
-    static async findOrCreateUser({ name, email }) {
-        let user = await User.findOne({ email })
-        if (!user) {
-            user = await User.create({ name, email })
+export const googleAuth = async (req, res) => {
+    try {
+        const { name, email } = req.body
+        if (!name || !email) {
+            return res.status(400).json({ message: "Name and email are required" })
         }
-        return user
-    }
-
-    static async generateTokenCookie(res, userId) {
-        const token = await genToken(userId)
+        await user.save()
+        
+        let token = await genToken(user._id)
         res.cookie("token", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+            http: true,
+            secure: false,
+            sameSite: "strict",
             maxAge: 7 * 24 * 60 * 60 * 1000
         })
-        return token
-    }
 
-    static clearTokenCookie(res) {
-        res.clearCookie("token", {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: process.env.NODE_ENV === "production" ? "none" : "strict"
-        })
+        return res.status(200).json(user)
+    } catch (error) {
+        return res.status(500).json({ message: `Google auth error: ${error.message}` })
+    }
+}
+
+export const logOut = async (req, res) => {
+    try {
+        AuthService.clearTokenCookie(res)
+        return res.status(200).json({ message: "Logged out successfully" })
+    } catch (error) {
+        return res.status(500).json({ message: `Logout error: ${error.message}` })
     }
 }
