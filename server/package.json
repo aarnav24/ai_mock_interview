@@ -17,13 +17,18 @@
     "crypto": "^1.0.1",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
     "express-ws": "^5.0.2",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.6.3",
     "multer": "^2.1.1",
     "nodemon": "^3.1.14",
     "pdfjs-dist": "^6.0.227",
+<<<<<<< HEAD
     "razorpay": "^2.9.6",
     "ws": "^8.21.0"
+=======
+    "razorpay": "^2.9.6"
+>>>>>>> 60456f7 (refactor: overhaul report component with collapsible answers and implement backend services for authentication, AI, and interview management)
   }
 }
