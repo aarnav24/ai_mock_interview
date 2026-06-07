@@ -30,12 +30,7 @@ export class AIService {
     }
 
     static async generateQuestions({ role, experience, mode, resumeText, projects, skills }) {
-        const userPrompt = `Role: ${role}
-Experience: ${experience}
-InterviewMode: ${mode}
-Projects: ${projects.length ? projects.join(", ") : "None"}
-Skills: ${skills.length ? skills.join(", ") : "None"}
-Resume: ${resumeText || "None"}`
+        const userPrompt = `role:${role}|exp:${experience}|mode:${mode}|skills:${skills.length ? skills.join(",") : "none"}|projects:${projects.length ? projects.join(",") : "none"}|resume:${resumeText || "none"}`
 
         const systemPrompt = mode === "Technical"
             ? PromptBuilder.technicalQuestions()
@@ -50,14 +45,14 @@ Resume: ${resumeText || "None"}`
     static async evaluateAnswer({ question, answer, priorQA = "" }) {
         return this.#call([
             { role: "system", content: PromptBuilder.answerEvaluation(priorQA) },
-            { role: "user", content: `Question: ${question}\nAnswer: ${answer}` }
+            { role: "user", content: `q:${question}\na:${answer}` }
         ])
     }
 
     static async generateFollowUp({ question, answer, score, trigger }) {
         return this.#call([
             { role: "system", content: PromptBuilder.followUpQuestion() },
-            { role: "user", content: `Question: ${question}\nAnswer: ${answer}\nScore: ${score}/10\nTrigger: ${trigger}` }
+            { role: "user", content: `q:${question}\na:${answer}\nscore:${score}\ntrigger:${trigger}` }
         ])
     }
 
@@ -81,8 +76,8 @@ Resume: ${resumeText || "None"}`
 
     static async generateImprovementPlan({ role, experience, weakTopics }) {
         const topicContext = weakTopics
-            .map(t => `Topic: ${t.topic} (Score: ${t.score}/10)\nWeak answer: ${t.answer}`)
-            .join("\n\n")
+            .map(t => `topic:${t.topic}|score:${t.score}|ans:${t.answer}`)
+            .join("\n")
 
         return this.#call([
             { role: "system", content: PromptBuilder.improvementPlan(role, experience) },

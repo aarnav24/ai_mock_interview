@@ -52,13 +52,17 @@ export class InterviewService {
             throw { status: 400, message: `Not enough credits. Minimum ${CREDITS_PER_INTERVIEW} required` }
         }
 
+        const resumeSnippet = resumeText?.trim()
+            ? resumeText.trim().slice(0, 800)   // cap at ~200 tokens — AI needs signal not full text
+            : "none"
+
         const aiResponse = await AIService.generateQuestions({
             role: role.trim(),
             experience: experience.trim(),
             mode: mode.trim(),
-            resumeText: resumeText?.trim() || "None",
-            projects: Array.isArray(projects) ? projects : [],
-            skills: Array.isArray(skills) ? skills : []
+            resumeText: resumeSnippet,
+            projects: Array.isArray(projects) ? projects.slice(0, 5) : [],
+            skills: Array.isArray(skills) ? skills.slice(0, 10) : []
         })
 
         const questionsArray = aiResponse
@@ -104,7 +108,7 @@ export class InterviewService {
             question.score = 0
             question.feedback = "You did not submit an answer."
             await interview.save()
-            return { feedback: question.feedback, followUpTrigger: null }
+            return { feedback: question.feedback, score: 0, followUpTrigger: null }
         }
 
         if (timeTaken > question.timeLimit) {
@@ -112,18 +116,18 @@ export class InterviewService {
             question.score = 0
             question.feedback = "Time limit exceeded. Answer not evaluated."
             await interview.save()
-            return { feedback: question.feedback, followUpTrigger: null }
+            return { feedback: question.feedback, score: 0, followUpTrigger: null }
         }
 
         const priorQA = interview.questions
             .slice(0, questionIndex)
             .filter(q => q.answer)
-            .map((q, i) => `Q${i + 1}: ${q.question}\nAnswer: ${q.answer}\nScore: ${q.score}/10`)
-            .join("\n\n")
+            .map((q, i) => `q${i + 1}:${q.question}|a:${q.answer}|s:${q.score}`)
+            .join("\n")
 
         const aiResponse = await AIService.evaluateAnswer({
             question: question.question,
-            answer,
+            answer: answer.slice(0, 1200),   // cap at ~300 tokens
             priorQA
         })
 
@@ -140,7 +144,7 @@ export class InterviewService {
 
         await interview.save()
 
-        return { feedback: parsed.feedback, followUpTrigger }
+        return { feedback: parsed.feedback, score: parsed.finalScore, followUpTrigger }
     }
 
     static async generateFollowUp({ interviewId, questionIndex, answer, score, trigger }) {
@@ -167,7 +171,7 @@ export class InterviewService {
         interview.questions.splice(questionIndex + 1, 0, followUpQuestion)
         await interview.save()
 
-        return { followUpQuestion: interview.questions[questionIndex + 1] }
+        return { question: interview.questions[questionIndex + 1] }
     }
 
     static async finishInterview(interviewId) {
@@ -193,9 +197,9 @@ export class InterviewService {
 
         const qaContext = questions
             .map((q, i) =>
-                `Q${i + 1} [${q.difficulty}]: ${q.question}\nAnswer: ${q.answer || "Not answered"}\nConfidence: ${q.confidence}, Communication: ${q.communication}, Correctness: ${q.correctness}\nFeedback: ${q.feedback}`
+                `q${i + 1}[${q.difficulty}]:${q.question}|a:${q.answer || "none"}|conf:${q.confidence}|comm:${q.communication}|corr:${q.correctness}|fb:${q.feedback}`
             )
-            .join("\n\n")
+            .join("\n")
 
         const [summaryText, topicsRaw] = await Promise.all([
             AIService.generateSummary(qaContext).catch(() => ""),
