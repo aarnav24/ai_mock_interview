@@ -277,8 +277,8 @@ const Step3Report = ({ report }) => {
                         className="bg-white rounded-2xl sm:rounded-3xl shadow-lg p-5 sm:p-8"
                     >
                         <h3 className="text-base font-semibold text-gray-700 mb-4">Performance Trend</h3>
-                        <div className="h-64 sm:h-72">
-                            <ResponsiveContainer width="100%" height="100%">
+                        <div className="h-64 sm:h-72 w-full min-w-0">
+                            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                                 <AreaChart data={questionScoreData}>
                                     <CartesianGrid strokeDasharray="3 3" />
                                     <XAxis dataKey="name" />

@@ -777,10 +777,11 @@ const Step2Interview = ({ interviewData, onFinish }) => {
                         { interviewId, questionIndex: currentIndex, answer, score, trigger: followUpTrigger },
                         { withCredentials: true }
                     )
-                    if (fuResult.data?.question) {
+                    const followUpQuestion = fuResult.data?.followUpQuestion || fuResult.data?.question
+                    if (followUpQuestion) {
                         setQuestions(prev => {
                             const updated = [...prev]
-                            updated.splice(currentIndex + 1, 0, fuResult.data.question)
+                            updated.splice(currentIndex + 1, 0, followUpQuestion)
                             return updated
                         })
                     }

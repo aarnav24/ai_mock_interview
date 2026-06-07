@@ -31,20 +31,35 @@ const App = () => {
 
     return (
         <ErrorBoundary>
-            <Routes>
-                <Route path="/"         element={<Home />} />
-                <Route path="/auth"     element={<Auth />} />
-                <Route path="/pricing"  element={<Pricing />} />
-                <Route path="/interview" element={
-                    <ProtectedRoute><InterviewPage /></ProtectedRoute>
-                } />
-                <Route path="/history" element={
-                    <ProtectedRoute><InterviewHistory /></ProtectedRoute>
-                } />
-                <Route path="/report/:id" element={
-                    <ProtectedRoute><InterviewReport /></ProtectedRoute>
-                } />
-            </Routes>
+            <div className="min-h-screen w-full relative bg-white overflow-x-hidden">
+                {/* Soft Yellow Glow */}
+                <div
+                    className="fixed inset-0 z-40 pointer-events-none"
+                    style={{
+                        backgroundImage: `radial-gradient(circle at top right, #d1fae5 0%, transparent 70%)`,
+                        opacity: 0.6,
+                        mixBlendMode: "multiply",
+                    }}
+                />
+                
+                {/* Content */}
+                <div className="relative z-10 min-h-screen flex flex-col">
+                    <Routes>
+                        <Route path="/"         element={<Home />} />
+                        <Route path="/auth"     element={<Auth />} />
+                        <Route path="/pricing"  element={<Pricing />} />
+                        <Route path="/interview" element={
+                            <ProtectedRoute><InterviewPage /></ProtectedRoute>
+                        } />
+                        <Route path="/history" element={
+                            <ProtectedRoute><InterviewHistory /></ProtectedRoute>
+                        } />
+                        <Route path="/report/:id" element={
+                            <ProtectedRoute><InterviewReport /></ProtectedRoute>
+                        } />
+                    </Routes>
+                </div>
+            </div>
         </ErrorBoundary>
     )
 }
