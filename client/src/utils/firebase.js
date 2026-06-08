@@ -1,5 +1,4 @@
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
 import { getAuth, GoogleAuthProvider } from "firebase/auth"
 
 const firebaseConfig = {
@@ -8,13 +7,10 @@ const firebaseConfig = {
     projectId: "interview-agent-6b9cc",
     storageBucket: "interview-agent-6b9cc.firebasestorage.app",
     messagingSenderId: "234324350513",
-    appId: "1:234324350513:web:bffc9b0aa6ae792a9ae710",
-    measurementId: "G-L495XM4KLQ"
+    appId: "1:234324350513:web:bffc9b0aa6ae792a9ae710"
 };
 
 const app = initializeApp(firebaseConfig);
-
-const analytics = getAnalytics(app);
 
 const auth = getAuth(app)
 

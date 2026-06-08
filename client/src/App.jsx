@@ -57,6 +57,7 @@ const App = () => {
                         <Route path="/report/:id" element={
                             <ProtectedRoute><InterviewReport /></ProtectedRoute>
                         } />
+                        <Route path="/public/report/:id" element={<InterviewReport isPublic />} />
                     </Routes>
                 </div>
             </div>

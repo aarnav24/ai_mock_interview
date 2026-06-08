@@ -1,7 +1,6 @@
 import express from "express"
 import isLoggedIn from "../middlewares/auth.middleware.js"
 import { upload } from "../middlewares/multer.js"
-import { aiLimiter } from "../middlewares/rateLimiter.js"
 import {
     analyzeResume,
     generateQuestions,
@@ -10,18 +9,24 @@ import {
     finishInterview,
     getMyInterviews,
     getInterviewReport,
-    getProgress
+    getProgress,
+    resumeInterview,
+    shareReport,
+    getPublicReport
 } from "../controllers/interview.controller.js"
 
 const interviewRouter = express.Router()
 
 interviewRouter.post("/resume",             isLoggedIn, upload.single("resume"), analyzeResume)
-interviewRouter.post("/generate-questions", isLoggedIn, aiLimiter, generateQuestions)
-interviewRouter.post("/submit-answer",      isLoggedIn, aiLimiter, submitAnswer)
-interviewRouter.post("/follow-up",          isLoggedIn, aiLimiter, generateFollowUp)
+interviewRouter.post("/generate-questions", isLoggedIn, generateQuestions)
+interviewRouter.post("/submit-answer",      isLoggedIn, submitAnswer)
+interviewRouter.post("/follow-up",          isLoggedIn, generateFollowUp)
 interviewRouter.post("/finish",             isLoggedIn, finishInterview)
+interviewRouter.post("/share/:id",          isLoggedIn, shareReport)
 interviewRouter.get("/get-interviews",      isLoggedIn, getMyInterviews)
 interviewRouter.get("/progress",            isLoggedIn, getProgress)
+interviewRouter.get("/resume/:id",          isLoggedIn, resumeInterview)
 interviewRouter.get("/report/:id",          isLoggedIn, getInterviewReport)
+interviewRouter.get("/public/:id",          getPublicReport)
 
 export default interviewRouter
