@@ -10,7 +10,7 @@ const createLimiter = (windowMinutes, max, message) =>
     })
 
 export const aiLimiter = createLimiter(
-    15, 10,
+    15, 20,
     "Too many requests. Please wait 15 minutes before trying again."
 )
 

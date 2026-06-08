@@ -140,7 +140,7 @@ const Step2Interview = ({ interviewData, onFinish }) => {
     useEffect(() => {
         if (!selectedVoice) return
 
-        const run = async () => {
+        const runIntro = async () => {
             if (isIntroPhase) {
                 await speakText(`Hi ${userName}, it's great to meet you today. I hope you're feeling confident and ready.`)
                 await speakText("I'll ask you a few questions. Just answer naturally. Let's begin!")
@@ -155,7 +155,7 @@ const Step2Interview = ({ interviewData, onFinish }) => {
                 setCanAnswer(true)
             }
         }
-        run()
+        runIntro()
     }, [selectedVoice, isIntroPhase, currentIndex])
 
     // Countdown timer
@@ -436,7 +436,7 @@ const Step2Interview = ({ interviewData, onFinish }) => {
                         placeholder="Type or speak your answer here..."
                         onChange={(e) => setAnswer(e.target.value)}
                         value={answer}
-                        disabled={!!feedback}
+                        disabled={feedback}
                         className="flex-1 bg-gray-100 p-4 sm:p-6 rounded-2xl resize-none outline-none border border-gray-200 focus:ring-2 focus:ring-emerald-500 transition text-gray-800 disabled:opacity-60"
                     />
 
