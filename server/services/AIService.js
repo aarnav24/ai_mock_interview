@@ -29,12 +29,12 @@ export class AIService {
         ])
     }
 
-    static async generateQuestions({ role, experience, mode, resumeText, projects, skills }) {
+    static async generateQuestions({ role, experience, mode, resumeText, projects, skills, count = 5 }) {
         const userPrompt = `role:${role}|exp:${experience}|mode:${mode}|skills:${skills.length ? skills.join(",") : "none"}|projects:${projects.length ? projects.join(",") : "none"}|resume:${resumeText || "none"}`
 
         const systemPrompt = mode === "Technical"
-            ? PromptBuilder.technicalQuestions()
-            : PromptBuilder.hrQuestions()
+            ? PromptBuilder.technicalQuestions(count)
+            : PromptBuilder.hrQuestions(count)
 
         return this.#call([
             { role: "system", content: systemPrompt },

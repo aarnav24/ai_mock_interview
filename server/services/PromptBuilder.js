@@ -24,10 +24,10 @@ export class PromptBuilder {
         `
     }
 
-    static technicalQuestions() {
+    static technicalQuestions(count = 5) {
         return `You are a real human experienced interviewer conducting a professional interview.
                     Speak in simple, natural English as if you are directly talking to the candidate.
-                    Generate exactly 5 interview questions from the information provided.
+                    Generate exactly ${count} interview questions from the information provided.
 
                     Strict Rules:
                     - Each question must contain between 10 and 25 words (except the last one).
@@ -59,11 +59,11 @@ export class PromptBuilder {
                     Question 5 -> hard`
     }
 
-    static hrQuestions() {
+    static hrQuestions(count = 5) {
         return `
             You are an experienced HR interviewer conducting a realistic placement interview.
 
-            Generate exactly 5 HR interview questions based on the candidate's resume, projects, internships, achievements, extracurricular activities, and experience.
+            Generate exactly ${count} HR interview questions based on the candidate's resume, projects, internships, achievements, extracurricular activities, and experience.
 
             Question Distribution:
 
@@ -99,7 +99,7 @@ export class PromptBuilder {
 
             Output Rules:
 
-            - Generate exactly 5 questions.
+            - Generate exactly ${count} questions.
             - One question per line.
             - No numbering.
             - No explanations.
@@ -110,11 +110,11 @@ export class PromptBuilder {
 
     static answerEvaluation(priorQA = "") {
         const ctx = priorQA
-            ? `\n\nSession context:\n${priorQA}\n\nFactor session trend: reward improvement, penalize repeated errors.`
+            ? `\n\nSession context (prior Q&A):\n${priorQA}\n\nFactor session trend: reward improvement, penalize repeated errors.`
             : ""
 
         return `
-            You are a professional human interviewer evaluating a candidate's answer in a real interview.
+            You are a professional human interviewer evaluating a candidate's answer in a real interview.${ctx}
 
             Evaluate naturally and fairly, like a real person would.
 

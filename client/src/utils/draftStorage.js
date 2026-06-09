@@ -1,4 +1,5 @@
 const PREFIX = "interview_draft_"
+const ACTIVE_KEY = "active_interview_id"
 
 export const saveDraft = (interviewId, questionIndex, answer) => {
     try {
@@ -28,6 +29,30 @@ export const clearAllDrafts = (interviewId) => {
     try {
         const keys = Object.keys(localStorage).filter(k => k.startsWith(`${PREFIX}${interviewId}_`))
         keys.forEach(k => localStorage.removeItem(k))
+    } catch {
+        // ignore
+    }
+}
+
+export const saveActiveInterview = (id) => {
+    try {
+        localStorage.setItem(ACTIVE_KEY, id)
+    } catch {
+        // ignore
+    }
+}
+
+export const loadActiveInterview = () => {
+    try {
+        return localStorage.getItem(ACTIVE_KEY)
+    } catch {
+        return null
+    }
+}
+
+export const clearActiveInterview = () => {
+    try {
+        localStorage.removeItem(ACTIVE_KEY)
     } catch {
         // ignore
     }

@@ -7,9 +7,8 @@ import maleVideo from "../assets/Videos/male-ai.mp4"
 import femaleVideo from "../assets/Videos/female-ai.mp4"
 import Timer from "./timer"
 import { ServerUrl } from "../App"
-import { saveDraft, loadDraft, clearDraft, clearAllDrafts } from "../utils/draftStorage"
+import { saveDraft, loadDraft, clearDraft, clearAllDrafts, clearActiveInterview } from "../utils/draftStorage"
 
-// Coaching thresholds
 const COACHING = {
     wordCountWarn: 20,
     wordCountGood: 60,
@@ -32,22 +31,27 @@ const getWordCountHint = (text) => {
 }
 
 const Step2Interview = ({ interviewData, onFinish }) => {
-    const { interviewId, questions: initialQuestions, userName } = interviewData
+    const { interviewId, questions: initialQuestions, userName, resumeFromIndex = 0 } = interviewData
 
     const [questions, setQuestions] = useState(initialQuestions)
-    const [isIntroPhase, setIsIntroPhase] = useState(true)
+    const [isIntroPhase, setIsIntroPhase] = useState(resumeFromIndex === 0)
     const [isMicOn, setIsMicOn] = useState(false)
     const [isAIPlaying, setIsAIPlaying] = useState(false)
-    const [currentIndex, setCurrentIndex] = useState(0)
+    const [currentIndex, setCurrentIndex] = useState(resumeFromIndex)
     const [answer, setAnswer] = useState("")
     const [feedback, setFeedback] = useState("")
     const [lastScore, setLastScore] = useState(null)
-    const [timeLeft, setTimeLeft] = useState(questions[0]?.timeLimit || 60)
+    const [timeLeft, setTimeLeft] = useState(initialQuestions[resumeFromIndex]?.timeLimit || 60)
     const [selectedVoice, setSelectedVoice] = useState(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [voiceGender, setVoiceGender] = useState("female")
-    const [canAnswer, setCanAnswer] = useState(false)
+    const [canAnswer, setCanAnswer] = useState(resumeFromIndex > 0)
     const [subtitle, setSubtitle] = useState("")
+    const [isFinishing, setIsFinishing] = useState(false)
+    const [isPaused, setIsPaused] = useState(false)
+    const [volume, setVolume] = useState(0)
+    const [liveTranscript, setLiveTranscript] = useState("")
+    const [tabSwitchToast, setTabSwitchToast] = useState(false)
 
     const videoRef = useRef(null)
     const mediaRecorderRef = useRef(null)
@@ -55,12 +59,14 @@ const Step2Interview = ({ interviewData, onFinish }) => {
     const silenceTimerRef = useRef(null)
     const pendingTextRef = useRef("")
     const isMicOnRef = useRef(false)
+    const audioCtxRef = useRef(null)
+    const analyserRef = useRef(null)
+    const rafRef = useRef(null)
 
     const currentQuestion = questions[currentIndex]
 
     useEffect(() => { isMicOnRef.current = isMicOn }, [isMicOn])
 
-    // Load draft for current question
     useEffect(() => {
         if (!isIntroPhase && interviewId) {
             const draft = loadDraft(interviewId, currentIndex)
@@ -68,14 +74,12 @@ const Step2Interview = ({ interviewData, onFinish }) => {
         }
     }, [currentIndex, isIntroPhase, interviewId])
 
-    // Persist draft on answer change
     useEffect(() => {
         if (!isIntroPhase && interviewId && answer) {
             saveDraft(interviewId, currentIndex, answer)
         }
     }, [answer, currentIndex, isIntroPhase, interviewId])
 
-    // Load voices
     useEffect(() => {
         const loadVoices = () => {
             const voices = window.speechSynthesis.getVoices()
@@ -136,7 +140,6 @@ const Step2Interview = ({ interviewData, onFinish }) => {
         })
     }, [selectedVoice])
 
-    // Intro + question narration
     useEffect(() => {
         if (!selectedVoice) return
 
@@ -158,9 +161,8 @@ const Step2Interview = ({ interviewData, onFinish }) => {
         runIntro()
     }, [selectedVoice, isIntroPhase, currentIndex])
 
-    // Countdown timer
     useEffect(() => {
-        if (isIntroPhase || !currentQuestion || !canAnswer) return
+        if (isIntroPhase || !currentQuestion || !canAnswer || isPaused) return
         const timer = setInterval(() => {
             setTimeLeft(prev => {
                 if (prev <= 1) { clearInterval(timer); return 0 }
@@ -168,16 +170,14 @@ const Step2Interview = ({ interviewData, onFinish }) => {
             })
         }, 1000)
         return () => clearInterval(timer)
-    }, [isIntroPhase, currentIndex, canAnswer])
+    }, [isIntroPhase, currentIndex, canAnswer, isPaused])
 
-    // Auto-submit on timer expire
     useEffect(() => {
         if (canAnswer && !isIntroPhase && currentQuestion && timeLeft === 0 && !isSubmitting && !feedback) {
             submitAnswer()
         }
     }, [canAnswer, timeLeft, isSubmitting, feedback, isIntroPhase, currentQuestion])
 
-    // --- Deepgram mic ---
     const flushPending = useCallback(() => {
         const text = pendingTextRef.current.trim()
         if (text) {
@@ -186,64 +186,18 @@ const Step2Interview = ({ interviewData, onFinish }) => {
         }
     }, [])
 
-    const startMic = useCallback(async () => {
-        if (!canAnswer || isAIPlaying || isSubmitting || feedback) return
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-            console.log("[mic] got audio stream")
-
-            const wsUrl = ServerUrl.replace(/^http/, "ws") + "/api/deepgram/live"
-            const ws = new WebSocket(wsUrl)
-            wsRef.current = ws
-
-            ws.onopen = () => console.log("[mic] WS open")
-            ws.onclose = (e) => {
-                console.log("[mic] WS closed", e.code)
-                flushPending()
-            }
-
-            ws.onmessage = (event) => {
-                try {
-                    const msg = JSON.parse(event.data)
-                    if (msg.type !== "transcript") return
-
-                    if (msg.isFinal) {
-                        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
-                        pendingTextRef.current += (pendingTextRef.current ? " " : "") + msg.transcript
-
-                        silenceTimerRef.current = setTimeout(() => {
-                            flushPending()
-                        }, 5000)
-                    }
-                } catch { /* ignore parse errors */ }
-            }
-
-            const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"]
-                .find(t => MediaRecorder.isTypeSupported(t)) || ""
-
-            const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {})
-            mediaRecorderRef.current = recorder
-
-            recorder.ondataavailable = (e) => {
-                if (e.data.size > 0 && ws.readyState === WebSocket.OPEN) {
-                    ws.send(e.data)
-                }
-            }
-
-            recorder.start(250)
-            console.log("[mic] recording started")
-        } catch (err) {
-            console.error("[mic] startMic error:", err)
-        }
-    }, [canAnswer, isAIPlaying, isSubmitting, feedback, flushPending])
-
     const stopMic = useCallback(() => {
         if (silenceTimerRef.current) {
             clearTimeout(silenceTimerRef.current)
             silenceTimerRef.current = null
         }
         flushPending()
+
+        if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null }
+        if (audioCtxRef.current) { audioCtxRef.current.close(); audioCtxRef.current = null }
+        analyserRef.current = null
+        setVolume(0)
+        setLiveTranscript("")
 
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
             mediaRecorderRef.current.stop()
@@ -256,6 +210,69 @@ const Step2Interview = ({ interviewData, onFinish }) => {
         }
     }, [flushPending])
 
+    const startMic = useCallback(async () => {
+        if (!canAnswer || isAIPlaying || isSubmitting || feedback) return
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+
+            // Audio volume analyser
+            const audioCtx = new AudioContext()
+            const source = audioCtx.createMediaStreamSource(stream)
+            const analyser = audioCtx.createAnalyser()
+            analyser.fftSize = 256
+            source.connect(analyser)
+            audioCtxRef.current = audioCtx
+            analyserRef.current = analyser
+
+            const measureVolume = () => {
+                if (!analyserRef.current) return
+                const data = new Uint8Array(analyserRef.current.frequencyBinCount)
+                analyserRef.current.getByteFrequencyData(data)
+                const avg = data.reduce((s, v) => s + v, 0) / data.length
+                setVolume(avg / 128)
+                rafRef.current = requestAnimationFrame(measureVolume)
+            }
+            rafRef.current = requestAnimationFrame(measureVolume)
+
+            const wsUrl = ServerUrl.replace(/^http/, "ws") + "/api/deepgram/live"
+            const ws = new WebSocket(wsUrl)
+            wsRef.current = ws
+
+            ws.onclose = () => flushPending()
+
+            ws.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data)
+                    if (msg.type !== "transcript" || !msg.transcript) return
+                    if (msg.isFinal) {
+                        setLiveTranscript("")
+                        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
+                        pendingTextRef.current += (pendingTextRef.current ? " " : "") + msg.transcript
+                        silenceTimerRef.current = setTimeout(() => { flushPending() }, 5000)
+                    } else {
+                        // Show interim result immediately
+                        setLiveTranscript(msg.transcript)
+                    }
+                } catch { /* ignore parse errors */ }
+            }
+
+            const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"]
+                .find(t => MediaRecorder.isTypeSupported(t)) || ""
+
+            const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {})
+            mediaRecorderRef.current = recorder
+
+            recorder.ondataavailable = (e) => {
+                if (e.data.size > 0 && ws.readyState === WebSocket.OPEN) ws.send(e.data)
+            }
+
+            recorder.start(250)
+        } catch (err) {
+            console.error("[mic] startMic error:", err)
+        }
+    }, [canAnswer, isAIPlaying, isSubmitting, feedback, flushPending])
+
     const toggleMic = useCallback(() => {
         if (isMicOnRef.current) {
             stopMic()
@@ -266,18 +283,32 @@ const Step2Interview = ({ interviewData, onFinish }) => {
         }
     }, [startMic, stopMic])
 
-    // Re-start mic when canAnswer flips true and mic was on
     useEffect(() => {
-        if (canAnswer && isMicOn && !isAIPlaying) {
-            startMic()
-        }
+        if (canAnswer && isMicOn && !isAIPlaying) startMic()
     }, [canAnswer, isAIPlaying])
 
-    // Cleanup on unmount
     useEffect(() => {
         return () => {
             stopMic()
             window.speechSynthesis.cancel()
+        }
+    }, [])
+
+    // Fullscreen + tab-switch guard
+    useEffect(() => {
+        document.documentElement.requestFullscreen().catch(() => {})
+
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                setTabSwitchToast(true)
+                setTimeout(() => setTabSwitchToast(false), 3500)
+            }
+        }
+
+        document.addEventListener("visibilitychange", handleVisibilityChange)
+        return () => {
+            document.removeEventListener("visibilitychange", handleVisibilityChange)
+            if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
         }
     }, [])
 
@@ -299,7 +330,6 @@ const Step2Interview = ({ interviewData, onFinish }) => {
             setLastScore(score)
             clearDraft(interviewId, currentIndex)
 
-            // Inject follow-up if triggered
             if (followUpTrigger) {
                 try {
                     const fuResult = await axios.post(
@@ -307,7 +337,7 @@ const Step2Interview = ({ interviewData, onFinish }) => {
                         { interviewId, questionIndex: currentIndex, answer, score, trigger: followUpTrigger },
                         { withCredentials: true }
                     )
-                    const followUpQuestion = fuResult.data?.followUpQuestion || fuResult.data?.question
+                    const followUpQuestion = fuResult.data?.question
                     if (followUpQuestion) {
                         setQuestions(prev => {
                             const updated = [...prev]
@@ -336,7 +366,7 @@ const Step2Interview = ({ interviewData, onFinish }) => {
         setIsSubmitting(false)
 
         if (currentIndex + 1 === questions.length) {
-            finishInterview()
+            await doFinishInterview()
             return
         }
 
@@ -345,15 +375,30 @@ const Step2Interview = ({ interviewData, onFinish }) => {
         setTimeLeft(questions[currentIndex + 1].timeLimit)
     }
 
-    const finishInterview = async () => {
+    const handlePause = () => {
         stopMic()
         setIsMicOn(false)
+        window.speechSynthesis.cancel()
+        setIsAIPlaying(false)
+        setIsPaused(true)
+    }
+
+    const handleResumePause = () => {
+        setIsPaused(false)
+    }
+
+    const doFinishInterview = async () => {
+        stopMic()
+        setIsMicOn(false)
+        setIsFinishing(true)
         try {
             const result = await axios.post(`${ServerUrl}/api/interview/finish`, { interviewId }, { withCredentials: true })
             clearAllDrafts(interviewId)
+            clearActiveInterview()
             onFinish(result.data)
         } catch (error) {
             console.error("[finish] error:", error)
+            setIsFinishing(false)
         }
     }
 
@@ -361,6 +406,53 @@ const Step2Interview = ({ interviewData, onFinish }) => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-100 flex items-center justify-center p-4 sm:p-6">
+
+            {/* Tab switch warning toast */}
+            {tabSwitchToast && (
+                <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[60] bg-red-600 text-white px-6 py-3 rounded-xl shadow-2xl font-semibold text-sm animate-bounce">
+                    ⚠️ Tab switching is not allowed during the interview
+                </div>
+            )}
+
+            {/* Pause overlay */}
+            {isPaused && (
+                <div className="fixed inset-0 bg-white/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-6 p-6">
+                    <div className="text-5xl">⏸</div>
+                    <div className="text-center">
+                        <h2 className="text-2xl font-bold text-gray-800">Interview Paused</h2>
+                        <p className="text-gray-500 mt-2 text-sm max-w-xs">
+                            Your progress is saved. The timer is frozen. Resume whenever you're ready.
+                        </p>
+                        <p className="text-xs text-gray-400 mt-3 font-mono">
+                            Interview ID: {interviewId}
+                        </p>
+                    </div>
+                    <div className="flex flex-col gap-3 w-full max-w-xs">
+                        <button
+                            onClick={handleResumePause}
+                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold text-sm transition shadow-md">
+                            Resume Interview
+                        </button>
+                        <button
+                            onClick={doFinishInterview}
+                            className="w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 py-2.5 rounded-xl font-semibold text-sm transition">
+                            End Interview &amp; Get Report
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Preparing report loader */}
+            {isFinishing && (
+                <div className="fixed inset-0 bg-white/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-6">
+                    <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                    <div className="text-center">
+                        <h2 className="text-2xl font-bold text-gray-800">Preparing Your Report</h2>
+                        <p className="text-gray-500 mt-2 text-sm">Analyzing performance and generating insights...</p>
+                    </div>
+                </div>
+            )}
+
             <div className="w-full max-w-350 min-h-[80vh] bg-white rounded-3xl shadow-2xl border border-gray-200 flex flex-col lg:flex-row overflow-hidden">
 
                 {/* Left panel — AI avatar */}
@@ -410,6 +502,22 @@ const Step2Interview = ({ interviewData, onFinish }) => {
                                 </div>
                             </>
                         )}
+
+                        <div className="h-px bg-gray-200" />
+                        <div className="flex flex-col gap-2">
+                            <button
+                                onClick={handlePause}
+                                disabled={isFinishing || isSubmitting || isPaused}
+                                className="w-full bg-yellow-50 hover:bg-yellow-100 text-yellow-700 border border-yellow-200 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-40">
+                                ⏸ Pause Interview
+                            </button>
+                            <button
+                                onClick={doFinishInterview}
+                                disabled={isFinishing || isSubmitting}
+                                className="w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-40">
+                                Finish Interview
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -436,26 +544,49 @@ const Step2Interview = ({ interviewData, onFinish }) => {
                         placeholder="Type or speak your answer here..."
                         onChange={(e) => setAnswer(e.target.value)}
                         value={answer}
-                        disabled={feedback}
+                        disabled={!!feedback}
                         className="flex-1 bg-gray-100 p-4 sm:p-6 rounded-2xl resize-none outline-none border border-gray-200 focus:ring-2 focus:ring-emerald-500 transition text-gray-800 disabled:opacity-60"
                     />
 
-                    {wordHint && (
+                    {liveTranscript && (
+                        <p className="text-xs mt-1 ml-1 text-blue-500 italic animate-pulse">
+                            🎙 {liveTranscript}
+                        </p>
+                    )}
+
+                    {wordHint && !liveTranscript && (
                         <p className={`text-xs mt-1 ml-1 ${wordHint.color}`}>{wordHint.label}</p>
                     )}
 
                     {!feedback ? (
-                        <div className="flex items-center gap-4 mt-4">
+                        <div className="flex items-center gap-3 mt-4">
                             <motion.button
                                 whileTap={{ scale: 0.9 }}
                                 onClick={toggleMic}
                                 disabled={!canAnswer || isAIPlaying || isSubmitting}
-                                className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-full shadow-lg transition
+                                className={`w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0 flex items-center justify-center rounded-full shadow-lg transition
                                     ${isMicOn ? "bg-blue-600 text-white animate-pulse" : "bg-black text-white"}
                                     disabled:opacity-40`}
                             >
                                 {isMicOn ? <FaMicrophone size={20} /> : <FaMicrophoneSlash size={20} />}
                             </motion.button>
+
+                            {/* Live volume indicator */}
+                            {isMicOn && !isAIPlaying && (
+                                <div className="flex items-end gap-0.5 h-8">
+                                    {Array.from({ length: 16 }).map((_, i) => (
+                                        <div
+                                            key={i}
+                                            className={`w-1 rounded-full transition-all duration-75 ${
+                                                volume * 16 > i
+                                                    ? volume > 0.6 ? "bg-emerald-500" : volume > 0.3 ? "bg-yellow-400" : "bg-red-400"
+                                                    : "bg-gray-200"
+                                            }`}
+                                            style={{ height: `${Math.max(4, 6 + Math.sin(i * 0.8) * 10)}px` }}
+                                        />
+                                    ))}
+                                </div>
+                            )}
 
                             <motion.button
                                 onClick={submitAnswer}
@@ -470,15 +601,15 @@ const Step2Interview = ({ interviewData, onFinish }) => {
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            className="mt-4 bg-emerald-50 border border-emerald-200 p-5 rounded-2xl shadow-sm"
+                            className="mt-4 bg-emerald-50 border border-emerald-200 p-5 rounded-2xl shadow-sm space-y-3"
                         >
-                            <p className="text-emerald-700 font-medium mb-4">{feedback}</p>
+                            <p className="text-emerald-700 font-medium">{feedback}</p>
                             <button
                                 onClick={handleNext}
-                                className="w-full bg-gradient-to-r from-emerald-600 to-teal-500 text-white py-3 rounded-xl shadow-md hover:opacity-90 transition flex items-center justify-center gap-1"
+                                className="w-full bg-gradient-to-r from-emerald-600 to-teal-500 text-white py-2.5 rounded-xl shadow-md hover:opacity-90 transition flex items-center justify-center gap-1 font-semibold text-sm"
                             >
-                                {currentIndex === questions.length - 1 ? "Finish Interview" : "Next Question"}
-                                <BsArrowRight size={18} />
+                                {currentIndex === questions.length - 1 ? "View Report" : "Next Question"}
+                                <BsArrowRight size={16} />
                             </button>
                         </motion.div>
                     )}

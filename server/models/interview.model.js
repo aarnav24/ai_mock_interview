@@ -34,7 +34,8 @@ const interviewSchema = new mongoose.Schema({
     finalScore: { type: Number, default: 0 },
     status:     { type: String, enum: ["Incomplete", "Completed"], default: "Incomplete" },
     summary:    { type: String, default: "" },
-    improvementPlan: [improvementItemSchema]
+    improvementPlan: [improvementItemSchema],
+    isPublic:   { type: Boolean, default: false }
 }, { timestamps: true })
 
 const Interview = mongoose.model("Interview", interviewSchema)

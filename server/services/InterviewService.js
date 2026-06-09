@@ -1,59 +1,88 @@
-import fs from "fs"
+import { gzip, gunzip } from "zlib"
+import { promisify } from "util"
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs"
+
+const gzipAsync = promisify(gzip)
+const gunzipAsync = promisify(gunzip)
 import User from "../models/user.model.js"
 import Interview from "../models/interview.model.js"
+import Resume from "../models/resume.model.js"
 import { AIService } from "./AIService.js"
 
 const DIFFICULTY_MAP = ["Easy", "Easy", "Medium", "Medium", "Hard"]
 const TIME_LIMIT_MAP = [90, 90, 120, 120, 150]
-const CREDITS_PER_INTERVIEW = 50
+const CREDITS_BASE = 50
+const CREDITS_PER_EXTRA_QUESTION = 10
+const MAX_FOLLOW_UPS_PER_QUESTION = 2
+
+const makeDifficultyMap = (count) => {
+    const full = ["Easy", "Easy", "Easy", "Medium", "Medium", "Medium", "Hard", "Hard", "Hard", "Hard"]
+    if (count <= 5) return DIFFICULTY_MAP.slice(0, count)
+    return full.slice(0, count)
+}
+
+const makeTimeLimitMap = (count) => {
+    if (count <= 5) return TIME_LIMIT_MAP.slice(0, count)
+    return Array.from({ length: count }, (_, i) => {
+        if (i < Math.floor(count / 3)) return 90
+        if (i < count - 2) return 120
+        return 150
+    })
+}
 
 export class InterviewService {
 
-    static async analyzeResume(file) {
-        const filepath = file.path
-        try {
-            const fileBuffer = await fs.promises.readFile(filepath)
-            const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(fileBuffer) }).promise
+    static async analyzeResume(file, userId) {
+        const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(file.buffer) }).promise
 
-            let rawText = ""
-            for (let page = 1; page <= pdf.numPages; page++) {
-                const content = await (await pdf.getPage(page)).getTextContent()
-                rawText += content.items.map(item => item.str).join(" ") + "\n"
-            }
+        let rawText = ""
+        for (let page = 1; page <= pdf.numPages; page++) {
+            const content = await (await pdf.getPage(page)).getTextContent()
+            rawText += content.items.map(item => item.str).join(" ") + "\n"
+        }
 
-            const resumeText = rawText
-                .replace(/\s+/g, " ")
-                .replace(/\r\n/g, "\n")
-                .replace(/\n{3,}/g, "\n\n")
-                .replace(/[ \t]+/g, " ")
-                .trim()
+        const resumeText = rawText
+            .replace(/\s+/g, " ")
+            .replace(/\r\n/g, "\n")
+            .replace(/\n{3,}/g, "\n\n")
+            .replace(/[ \t]+/g, " ")
+            .trim()
 
-            const aiResponse = await AIService.analyzeResume(resumeText)
-            const parsed = JSON.parse(aiResponse)
+        // Compress + persist PDF to MongoDB
+        const compressed = await gzipAsync(file.buffer)
+        const savedResume = await Resume.create({
+            userId,
+            originalName: file.originalname || "resume.pdf",
+            buffer: compressed,
+            size: file.size
+        })
 
-            return {
-                role: parsed.role || "",
-                experience: parsed.experience || "",
-                projects: parsed.projects || [],
-                skills: parsed.skills || [],
-                resumeText
-            }
-        } finally {
-            if (fs.existsSync(filepath)) fs.unlinkSync(filepath)
+        const aiResponse = await AIService.analyzeResume(resumeText)
+        const parsed = JSON.parse(aiResponse)
+
+        return {
+            resumeId: savedResume._id,
+            role: parsed.role || "",
+            experience: parsed.experience || "",
+            projects: parsed.projects || [],
+            skills: parsed.skills || [],
+            resumeText
         }
     }
 
-    static async generateQuestions(userId, { role, experience, mode, resumeText, projects, skills }) {
+    static async generateQuestions(userId, { role, experience, mode, resumeText, projects, skills, count = 5 }) {
         const user = await User.findById(userId)
         if (!user) throw { status: 404, message: "User not found" }
 
-        if (user.credits < CREDITS_PER_INTERVIEW) {
-            throw { status: 400, message: `Not enough credits. Minimum ${CREDITS_PER_INTERVIEW} required` }
+        const questionCount = Math.min(Math.max(count, 2), 10)
+        const creditCost = CREDITS_BASE + Math.max(0, questionCount - 5) * CREDITS_PER_EXTRA_QUESTION
+
+        if (user.credits < creditCost) {
+            throw { status: 400, message: `Not enough credits. This interview requires ${creditCost} credits.` }
         }
 
         const resumeSnippet = resumeText?.trim()
-            ? resumeText.trim().slice(0, 800)   // cap at ~200 tokens — AI needs signal not full text
+            ? resumeText.trim().slice(0, 800)
             : "none"
 
         const aiResponse = await AIService.generateQuestions({
@@ -62,19 +91,23 @@ export class InterviewService {
             mode: mode.trim(),
             resumeText: resumeSnippet,
             projects: Array.isArray(projects) ? projects.slice(0, 5) : [],
-            skills: Array.isArray(skills) ? skills.slice(0, 10) : []
+            skills: Array.isArray(skills) ? skills.slice(0, 10) : [],
+            count: questionCount
         })
 
         const questionsArray = aiResponse
             .split("\n")
             .map(q => q.trim())
             .filter(q => q.length > 0)
-            .slice(0, 5)
+            .slice(0, questionCount)
 
         if (questionsArray.length === 0) throw new Error("AI failed to generate questions")
 
-        user.credits -= CREDITS_PER_INTERVIEW
+        user.credits -= creditCost
         await user.save()
+
+        const diffMap = makeDifficultyMap(questionCount)
+        const timeMap = makeTimeLimitMap(questionCount)
 
         const interview = await Interview.create({
             userId: user._id,
@@ -84,8 +117,8 @@ export class InterviewService {
             resumeText: resumeText?.trim() || "None",
             questions: questionsArray.map((q, i) => ({
                 question: q,
-                difficulty: DIFFICULTY_MAP[i],
-                timeLimit: TIME_LIMIT_MAP[i]
+                difficulty: diffMap[i],
+                timeLimit: timeMap[i]
             }))
         })
 
@@ -94,6 +127,22 @@ export class InterviewService {
             creditsLeft: user.credits,
             userName: user.name,
             questions: interview.questions
+        }
+    }
+
+    static async resumeInterview(interviewId, userId) {
+        const interview = await Interview.findOne({ _id: interviewId, userId })
+        if (!interview) throw { status: 404, message: "Interview not found" }
+        if (interview.status === "Completed") throw { status: 400, message: "Interview already completed" }
+
+        const user = await User.findById(userId)
+        const resumeFromIndex = interview.questions.findIndex(q => !q.answer)
+
+        return {
+            interviewId: interview._id,
+            userName: user?.name || "",
+            questions: interview.questions,
+            resumeFromIndex: resumeFromIndex === -1 ? 0 : resumeFromIndex
         }
     }
 
@@ -127,7 +176,7 @@ export class InterviewService {
 
         const aiResponse = await AIService.evaluateAnswer({
             question: question.question,
-            answer: answer.slice(0, 1200),   // cap at ~300 tokens
+            answer: answer.slice(0, 1200),
             priorQA
         })
 
@@ -140,7 +189,14 @@ export class InterviewService {
         question.score = parsed.finalScore
         question.feedback = parsed.feedback
 
-        const followUpTrigger = this.#resolveFollowUpTrigger(parsed)
+        // Cap follow-ups: only trigger if fewer than MAX already exist for this question
+        const existingFollowUps = interview.questions.filter(
+            q => q.isFollowUp && q.parentQuestionIndex === questionIndex
+        ).length
+
+        const followUpTrigger = existingFollowUps < MAX_FOLLOW_UPS_PER_QUESTION
+            ? this.#resolveFollowUpTrigger(parsed)
+            : null
 
         await interview.save()
 
@@ -150,6 +206,14 @@ export class InterviewService {
     static async generateFollowUp({ interviewId, questionIndex, answer, score, trigger }) {
         const interview = await Interview.findById(interviewId)
         if (!interview) throw { status: 404, message: "Interview not found" }
+
+        const existingFollowUps = interview.questions.filter(
+            q => q.isFollowUp && q.parentQuestionIndex === questionIndex
+        ).length
+
+        if (existingFollowUps >= MAX_FOLLOW_UPS_PER_QUESTION) {
+            return { question: null }
+        }
 
         const parentQuestion = interview.questions[questionIndex]
 
@@ -233,6 +297,7 @@ export class InterviewService {
         await interview.save()
 
         return {
+            interviewId: interview._id,
             finalScore: avg(totals.score),
             confidence: avg(totals.confidence),
             communication: avg(totals.communication),
@@ -241,6 +306,14 @@ export class InterviewService {
             improvementPlan: interview.improvementPlan || [],
             questionWiseScore: this.#formatQuestions(questions)
         }
+    }
+
+    static async makePublic(interviewId, userId) {
+        const interview = await Interview.findOne({ _id: interviewId, userId })
+        if (!interview) throw { status: 404, message: "Interview not found" }
+        interview.isPublic = true
+        await interview.save()
+        return { interviewId: interview._id, isPublic: true }
     }
 
     static async getMyInterviews(userId) {
@@ -253,30 +326,14 @@ export class InterviewService {
     static async getInterviewReport(interviewId) {
         const interview = await Interview.findById(interviewId)
         if (!interview) throw { status: 404, message: "Interview not found" }
+        return this.#buildReport(interview)
+    }
 
-        const questions = interview.questions
-        const count = questions.length
-
-        const totals = questions.reduce(
-            (acc, q) => ({
-                confidence: acc.confidence + (q.confidence || 0),
-                communication: acc.communication + (q.communication || 0),
-                correctness: acc.correctness + (q.correctness || 0)
-            }),
-            { confidence: 0, communication: 0, correctness: 0 }
-        )
-
-        const avg = (v) => count ? Number((v / count).toFixed(1)) : 0
-
-        return {
-            finalScore: interview.finalScore,
-            confidence: avg(totals.confidence),
-            communication: avg(totals.communication),
-            correctness: avg(totals.correctness),
-            summary: interview.summary || "",
-            improvementPlan: interview.improvementPlan || [],
-            questionWiseScore: this.#formatQuestions(questions)
-        }
+    static async getPublicReport(interviewId) {
+        const interview = await Interview.findById(interviewId)
+        if (!interview) throw { status: 404, message: "Interview not found" }
+        if (!interview.isPublic) throw { status: 403, message: "This report is not public" }
+        return this.#buildReport(interview)
     }
 
     static async getProgress(userId, { role, mode } = {}) {
@@ -306,6 +363,34 @@ export class InterviewService {
                 correctness: avgField("correctness")
             }
         })
+    }
+
+    static #buildReport(interview) {
+        const questions = interview.questions
+        const count = questions.length
+
+        const totals = questions.reduce(
+            (acc, q) => ({
+                confidence: acc.confidence + (q.confidence || 0),
+                communication: acc.communication + (q.communication || 0),
+                correctness: acc.correctness + (q.correctness || 0)
+            }),
+            { confidence: 0, communication: 0, correctness: 0 }
+        )
+
+        const avg = (v) => count ? Number((v / count).toFixed(1)) : 0
+
+        return {
+            interviewId: interview._id,
+            finalScore: interview.finalScore,
+            confidence: avg(totals.confidence),
+            communication: avg(totals.communication),
+            correctness: avg(totals.correctness),
+            summary: interview.summary || "",
+            improvementPlan: interview.improvementPlan || [],
+            questionWiseScore: this.#formatQuestions(questions),
+            isPublic: interview.isPublic
+        }
     }
 
     static #resolveFollowUpTrigger(scores) {

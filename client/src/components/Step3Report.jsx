@@ -81,79 +81,134 @@ const Step3Report = ({ report }) => {
     const downloadPDF = () => {
         const doc = new jsPDF("p", "mm", "a4")
         const pageWidth = doc.internal.pageSize.getWidth()
+        const pageHeight = doc.internal.pageSize.getHeight()
         const margin = 20
-        const contentWidth = pageWidth - margin * 2
-        let y = 15
+        const cw = pageWidth - margin * 2
+        let y = margin
 
-        doc.setFont("helvetica", "bold")
-        doc.setFontSize(20)
-        doc.setTextColor(34, 197, 94)
-        doc.text("AI Interview Performance Report", pageWidth / 2, y, { align: "center" })
-        y += 8
-        doc.setDrawColor(34, 197, 94)
-        doc.line(margin, y + 2, pageWidth - margin, y + 2)
-        y += 15
+        const TNR = "times"
 
-        doc.setFillColor(240, 253, 244)
-        doc.roundedRect(margin, y, contentWidth, 18, 4, 4, "F")
-        doc.setFontSize(14)
-        doc.setTextColor(0, 0, 0)
-        doc.text(`Final Score: ${finalScore}/10`, pageWidth / 2, y + 12, { align: "center" })
-        y += 35
-
-        doc.setFillColor(249, 250, 251)
-        doc.roundedRect(margin, y, contentWidth, 34, 4, 4, "F")
-        doc.setFontSize(12)
-        doc.text(`Confidence & Clarity: ${confidence}`, margin + 10, y + 11)
-        doc.text(`Communication: ${communication}`, margin + 10, y + 20)
-        doc.text(`Correctness & Completeness: ${correctness}`, margin + 10, y + 29)
-        y += 45
-
-        if (summary) {
-            doc.setFillColor(255, 255, 255)
-            doc.setDrawColor(220)
-            doc.roundedRect(margin, y, contentWidth, 30, 4, 4)
-            doc.setFont("helvetica", "bold")
+        const section = (title) => {
+            if (y > pageHeight - 40) { doc.addPage(); y = margin }
+            doc.setFont(TNR, "bold")
             doc.setFontSize(11)
-            doc.text("Executive Summary", margin + 10, y + 8)
-            doc.setFont("helvetica", "normal")
-            const splitSummary = doc.splitTextToSize(summary, contentWidth - 20)
-            doc.text(splitSummary.slice(0, 3), margin + 10, y + 16)
-            y += 40
+            doc.setTextColor(30, 30, 30)
+            doc.text(title, margin, y)
+            y += 2
+            doc.setDrawColor(180)
+            doc.line(margin, y, pageWidth - margin, y)
+            y += 6
         }
 
-        doc.setFillColor(255, 255, 255)
-        doc.setDrawColor(220)
-        doc.roundedRect(margin, y, contentWidth, 30, 4, 4)
-        doc.setFont("helvetica", "bold")
-        doc.setFontSize(11)
-        doc.text("Professional Advice", margin + 10, y + 8)
-        doc.setFont("helvetica", "normal")
-        const splitAdvice = doc.splitTextToSize(advice, contentWidth - 20)
-        doc.text(splitAdvice, margin + 10, y + 16)
-        y += 45
+        // Title
+        doc.setFont(TNR, "bold")
+        doc.setFontSize(20)
+        doc.setTextColor(0, 0, 0)
+        doc.text("AI Mock Interview — Performance Report", pageWidth / 2, y, { align: "center" })
+        y += 10
+        doc.setFont(TNR, "normal")
+        doc.setFontSize(10)
+        doc.setTextColor(100)
+        doc.text(`Final Score: ${finalScore}/10`, pageWidth / 2, y, { align: "center" })
+        y += 14
+
+        // Scores
+        section("Score Summary")
+        const scoreRows = [
+            ["Confidence & Clarity", `${confidence}/10`],
+            ["Communication", `${communication}/10`],
+            ["Correctness & Completeness", `${correctness}/10`],
+            ["Overall Final Score", `${finalScore}/10`]
+        ]
+        scoreRows.forEach(([label, val]) => {
+            doc.setFont(TNR, "normal")
+            doc.setFontSize(10)
+            doc.setTextColor(30, 30, 30)
+            doc.text(label, margin + 4, y)
+            doc.setFont(TNR, "bold")
+            doc.text(val, margin + cw - 4, y, { align: "right" })
+            y += 6
+        })
+        y += 4
+
+        // Executive Summary
+        if (summary) {
+            section("Executive Summary")
+            doc.setFont(TNR, "normal")
+            doc.setFontSize(10)
+            doc.setTextColor(30, 30, 30)
+            const lines = doc.splitTextToSize(summary, cw)
+            lines.forEach(line => {
+                if (y > pageHeight - 20) { doc.addPage(); y = margin }
+                doc.text(line, margin, y)
+                y += 5.5
+            })
+            y += 4
+        }
+
+        // Professional Advice
+        section("Professional Advice")
+        doc.setFont(TNR, "normal")
+        doc.setFontSize(10)
+        doc.setTextColor(30, 30, 30)
+        const adviceLines = doc.splitTextToSize(advice, cw)
+        adviceLines.forEach(line => {
+            if (y > pageHeight - 20) { doc.addPage(); y = margin }
+            doc.text(line, margin, y)
+            y += 5.5
+        })
+        y += 6
+
+        // Improvement Plan
+        if (improvementPlan.length > 0) {
+            section("Improvement Plan")
+            improvementPlan.forEach(item => {
+                if (y > pageHeight - 30) { doc.addPage(); y = margin }
+                doc.setFont(TNR, "bold")
+                doc.setFontSize(10)
+                doc.text(`• ${item.topic}`, margin + 2, y)
+                y += 5
+                item.suggestions?.forEach(s => {
+                    const sLines = doc.splitTextToSize(`  – ${s}`, cw - 8)
+                    sLines.forEach(sl => {
+                        if (y > pageHeight - 20) { doc.addPage(); y = margin }
+                        doc.setFont(TNR, "normal")
+                        doc.setFontSize(9)
+                        doc.setTextColor(50, 50, 50)
+                        doc.text(sl, margin + 6, y)
+                        y += 5
+                    })
+                })
+                y += 2
+            })
+            y += 2
+        }
+
+        // Question Breakdown
+        section("Question-by-Question Breakdown")
+        if (y > pageHeight - 40) { doc.addPage(); y = margin }
 
         autoTable(doc, {
             startY: y,
             margin: { left: margin, right: margin },
-            head: [["#", "Question", "Answer", "Score", "Feedback"]],
+            head: [["#", "Question", "Your Answer", "Score", "AI Feedback"]],
             body: questionWiseScore.map((q, i) => [
-                `${i + 1}`,
+                `${i + 1}${q.isFollowUp ? " ↩" : ""}`,
                 q.question || "",
-                q.answer?.slice(0, 120) || "—",
+                q.answer?.slice(0, 200) || "—",
                 `${q.score || 0}/10`,
                 q.feedback || "No feedback"
             ]),
-            styles: { fontSize: 7, cellPadding: 2, valign: "top" },
-            headStyles: { fillColor: [34, 197, 94], textColor: 255, fontSize: 7, halign: "center" },
+            styles: { font: TNR, fontSize: 8, cellPadding: 3, valign: "top", textColor: [20, 20, 20] },
+            headStyles: { font: TNR, fontStyle: "bold", fillColor: [20, 20, 20], textColor: 255, fontSize: 8 },
             columnStyles: {
-                0: { cellWidth: 8, halign: "center" },
-                1: { cellWidth: 40 },
-                2: { cellWidth: 45 },
-                3: { cellWidth: 16, halign: "center" },
+                0: { cellWidth: 10, halign: "center" },
+                1: { cellWidth: 42 },
+                2: { cellWidth: 50 },
+                3: { cellWidth: 14, halign: "center" },
                 4: { cellWidth: "auto" }
             },
-            alternateRowStyles: { fillColor: [249, 250, 251] }
+            alternateRowStyles: { fillColor: [248, 248, 248] }
         })
 
         doc.save("AI_Interview_Report.pdf")

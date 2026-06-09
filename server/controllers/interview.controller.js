@@ -9,7 +9,7 @@ const sendError = (res, error) => {
 export const analyzeResume = async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ message: "Resume file is required" })
-        const result = await InterviewService.analyzeResume(req.file)
+        const result = await InterviewService.analyzeResume(req.file, req.userId)
         return res.json(result)
     } catch (error) {
         return sendError(res, error)
@@ -18,14 +18,14 @@ export const analyzeResume = async (req, res) => {
 
 export const generateQuestions = async (req, res) => {
     try {
-        const { role, experience, mode, resumeText, projects, skills } = req.body
+        const { role, experience, mode, resumeText, projects, skills, count } = req.body
 
         if (!role?.trim() || !experience?.trim() || !mode?.trim()) {
             return res.status(400).json({ message: "Role, experience, and mode are required" })
         }
 
         const result = await InterviewService.generateQuestions(req.userId, {
-            role, experience, mode, resumeText, projects, skills
+            role, experience, mode, resumeText, projects, skills, count
         })
 
         return res.json(result)
@@ -63,6 +63,33 @@ export const finishInterview = async (req, res) => {
         const { interviewId } = req.body
         const result = await InterviewService.finishInterview(interviewId)
         return res.json(result)
+    } catch (error) {
+        return sendError(res, error)
+    }
+}
+
+export const resumeInterview = async (req, res) => {
+    try {
+        const result = await InterviewService.resumeInterview(req.params.id, req.userId)
+        return res.json(result)
+    } catch (error) {
+        return sendError(res, error)
+    }
+}
+
+export const shareReport = async (req, res) => {
+    try {
+        const result = await InterviewService.makePublic(req.params.id, req.userId)
+        return res.json(result)
+    } catch (error) {
+        return sendError(res, error)
+    }
+}
+
+export const getPublicReport = async (req, res) => {
+    try {
+        const report = await InterviewService.getPublicReport(req.params.id)
+        return res.json(report)
     } catch (error) {
         return sendError(res, error)
     }

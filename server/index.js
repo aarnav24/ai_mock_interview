@@ -8,7 +8,6 @@ import authRouter from "./routes/auth.route.js"
 import userRouter from "./routes/user.route.js"
 import interviewRouter from "./routes/interview.route.js"
 import paymentRouter from "./routes/payment.route.js"
-import { authLimiter } from "./middlewares/rateLimiter.js"
 import { handleDeepgramWebSocket } from "./controllers/deepgram.controller.js"
 
 const app = express()
@@ -22,16 +21,14 @@ app.use(cors({ origin: allowedOrigins, credentials: true }))
 app.use(express.json())
 app.use(cookieParser())
 
-
 app.get("/health", (_req, res) => res.status(200).json({ status: "ok" }))
 
 app.ws("/api/deepgram/live", handleDeepgramWebSocket)
 
-app.use("/api/auth",      authLimiter, authRouter)
+app.use("/api/auth",      authRouter)
 app.use("/api/user",      userRouter)
 app.use("/api/interview", interviewRouter)
-app.ws("/api/deepgram/live", (ws) => handleDeepgramWebSocket(ws))
-app.use("/api/payment", paymentRouter)
+app.use("/api/payment",   paymentRouter)
 
 const PORT = process.env.PORT || 8000
 
