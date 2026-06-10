@@ -11,8 +11,7 @@ import { AIService } from "./AIService.js"
 
 const DIFFICULTY_MAP = ["Easy", "Easy", "Medium", "Medium", "Hard"]
 const TIME_LIMIT_MAP = [90, 90, 120, 120, 150]
-const CREDITS_BASE = 50
-const CREDITS_PER_EXTRA_QUESTION = 10
+const CREDITS_PER_QUESTION = 10
 const MAX_FOLLOW_UPS_PER_QUESTION = 2
 
 const makeDifficultyMap = (count) => {
@@ -75,7 +74,7 @@ export class InterviewService {
         if (!user) throw { status: 404, message: "User not found" }
 
         const questionCount = Math.min(Math.max(count, 2), 10)
-        const creditCost = CREDITS_BASE + Math.max(0, questionCount - 5) * CREDITS_PER_EXTRA_QUESTION
+        const creditCost = questionCount * CREDITS_PER_QUESTION
 
         if (user.credits < creditCost) {
             throw { status: 400, message: `Not enough credits. This interview requires ${creditCost} credits.` }
@@ -189,9 +188,13 @@ export class InterviewService {
         question.score = parsed.finalScore
         question.feedback = parsed.feedback
 
-        // Cap follow-ups: only trigger if fewer than MAX already exist for this question
+        // Resolve the original parent (followups of followups count against the root parent)
+        const effectiveParentIndex = question.isFollowUp
+            ? question.parentQuestionIndex
+            : questionIndex
+
         const existingFollowUps = interview.questions.filter(
-            q => q.isFollowUp && q.parentQuestionIndex === questionIndex
+            q => q.isFollowUp && q.parentQuestionIndex === effectiveParentIndex
         ).length
 
         const followUpTrigger = existingFollowUps < MAX_FOLLOW_UPS_PER_QUESTION
@@ -207,18 +210,26 @@ export class InterviewService {
         const interview = await Interview.findById(interviewId)
         if (!interview) throw { status: 404, message: "Interview not found" }
 
+        const currentQuestion = interview.questions[questionIndex]
+
+        // If this question is itself a followup, redirect to the root parent
+        const rootParentIndex = currentQuestion.isFollowUp
+            ? currentQuestion.parentQuestionIndex
+            : questionIndex
+
         const existingFollowUps = interview.questions.filter(
-            q => q.isFollowUp && q.parentQuestionIndex === questionIndex
+            q => q.isFollowUp && q.parentQuestionIndex === rootParentIndex
         ).length
 
         if (existingFollowUps >= MAX_FOLLOW_UPS_PER_QUESTION) {
             return { question: null }
         }
 
-        const parentQuestion = interview.questions[questionIndex]
+        // Always generate followup based on the root parent question for coherence
+        const rootQuestion = interview.questions[rootParentIndex]
 
         const followUpText = await AIService.generateFollowUp({
-            question: parentQuestion.question,
+            question: rootQuestion.question,
             answer,
             score,
             trigger
@@ -229,7 +240,7 @@ export class InterviewService {
             difficulty: trigger === "go_deeper" ? "Hard" : "Easy",
             timeLimit: 90,
             isFollowUp: true,
-            parentQuestionIndex: questionIndex
+            parentQuestionIndex: rootParentIndex
         }
 
         interview.questions.splice(questionIndex + 1, 0, followUpQuestion)
