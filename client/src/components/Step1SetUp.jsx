@@ -32,7 +32,7 @@ const Step1SetUp = ({ onStart, onResume }) => {
         if (id) setActiveInterviewId(id)
     }, [])
 
-    const creditCost = 50 + Math.max(0, questionCount - 5) * 10
+    const creditCost = questionCount * 10
 
     const handleUploadResume = async () => {
         if (!resumeFile || analyzing) return
