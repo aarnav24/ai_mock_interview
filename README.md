@@ -159,6 +159,7 @@ sequenceDiagram
     actor User as Candidate
     participant FE as Frontend (React)
     participant BE as Backend (Express)
+    participant DG as Deepgram (via WS)
     participant AI as OpenRouter AI
 
     User->>FE: 1. Input parameters & Upload Resume PDF
@@ -167,13 +168,20 @@ sequenceDiagram
     AI-->>BE: Extracted Profile JSON
     BE-->>FE: Populate fields in Setup Screen
     User->>FE: Click "Start Interview"
-    FE->>BE: POST /api/interview/generate-questions (deducts 50 credits)
-    BE->>AI: Generate 5 custom questions (Technical/HR)
-    AI-->>BE: 5 Questions with Diff/Time Limit
+    FE->>BE: POST /api/interview/generate-questions (deducts 10 credits per question, e.g., 50 credits for 5 questions)
+    BE->>AI: Generate N custom questions (Technical/HR)
+    AI-->>BE: N Questions with Diff/Time Limit
     BE-->>FE: Display Step 2 (Interview Screen)
-    loop For Question 1 to 5
+    loop For Question 1 to N
         FE->>User: Play video avatar & TTS Question
-        User->>FE: Answer via Microphone or Textarea
+        alt Speak Answer (Voice Mode)
+            FE->>BE: Connect Web Socket: WS /api/deepgram/live
+            BE->>DG: Pipe audio buffer to Deepgram WS
+            DG-->>BE: Real-time Transcript stream
+            BE-->>FE: Live STT transcript display
+        else Type Answer (Text Mode)
+            User->>FE: Type answer directly in Textarea
+        end
         FE->>BE: POST /api/interview/submit-answer
         BE->>AI: Evaluate Answer (Confidence, Communication, Correctness)
         AI-->>BE: Score & Feedback JSON
@@ -192,9 +200,9 @@ sequenceDiagram
 ```
 
 ### Credit System Logic
-- Each new user starts with **100 credits**.
-- Launching an interview costs **50 credits** (deducted at the question generation phase).
-- Minimum **50 credits** is required to begin.
+- New users start with **300 credits** by default.
+- Launching an interview costs **10 credits per question** generated (e.g., a standard 5-question interview costs **50 credits**).
+- Credits are deducted at the question generation stage (`generate-questions`), and the user must possess at least the required credit cost to begin the session.
 
 ---
 
@@ -209,7 +217,7 @@ sequenceDiagram
 
 ### Interview Management (`/api/interview`)
 * `POST /api/interview/resume` - Accepts a resume PDF via Multer, saves a compressed version to the resume database, extracts textual data using `pdfjs-dist`, and structures details via AI.
-* `POST /api/interview/generate-questions` - Creates 5 customized questions (combining difficulty level with resume projects), constructs an `Interview` entry, and deducts 50 credits.
+* `POST /api/interview/generate-questions` - Creates N customized questions (combining difficulty level with resume projects), constructs an `Interview` entry, and deducts credits (10 credits per question).
 * `POST /api/interview/submit-answer` - Grades the current response across 3 dimensions (0-10 scale), logs history, and gives 10-15 word feedback.
 * `POST /api/interview/follow-up` - Dynamically generates follow-up context in response to weak answers.
 * `POST /api/interview/share/:id` - Creates/registers a public share key for an interview session report.
