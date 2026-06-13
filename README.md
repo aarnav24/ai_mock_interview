@@ -6,7 +6,7 @@ An advanced, full-stack AI-powered mock interview platform designed to help user
 
 ## 🚀 Key Features
 
-- 🎙️ **Interactive AI Interviewer**: Live voice interaction powered by Web Speech API (TTS) and Webkit Speech Recognition (STT).
+- 🎙️ **Interactive AI Interviewer**: Live voice interaction powered by Deepgram via Wobsocket connection.
 - 📻 **Real-time Live Audio Streaming**: Optional high-fidelity live transcription capabilities via integrated Deepgram WebSocket connections.
 - 📄 **Dual-DB Resume Archiver**: Upload PDF resumes to extract role, experience level, key projects, and skills. Resumes are stored in a compressed format in a dedicated database (`RESUME_MONGODB_URL`), separate from user metadata.
 - ⚙️ **Custom Interview Setup**: Choose between **Technical** and **HR** modes with a structured difficulty progression (Easy → Medium → Hard) and custom question-selection algorithms.
