@@ -31,6 +31,34 @@ const makeTimeLimitMap = (count) => {
 
 export class InterviewService {
 
+    static async getLastResume(userId) {
+        const resume = await Resume.findOne({ userId }).sort({ createdAt: -1 })
+        if (!resume) return null
+        return {
+            resumeId: resume._id,
+            originalName: resume.originalName,
+            role: resume.role || "",
+            experience: resume.experience || "",
+            projects: resume.projects || [],
+            skills: resume.skills || [],
+            resumeText: resume.resumeText || ""
+        }
+    }
+
+    static async getAllResumes(userId) {
+        const resumes = await Resume.find({ userId }).sort({ createdAt: -1 })
+        return resumes.map(resume => ({
+            resumeId: resume._id,
+            originalName: resume.originalName,
+            role: resume.role || "",
+            experience: resume.experience || "",
+            projects: resume.projects || [],
+            skills: resume.skills || [],
+            resumeText: resume.resumeText || "",
+            createdAt: resume.createdAt
+        }))
+    }
+
     static async analyzeResume(file, userId) {
         const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(file.buffer) }).promise
 
@@ -47,17 +75,22 @@ export class InterviewService {
             .replace(/[ \t]+/g, " ")
             .trim()
 
-        // Compress + persist PDF to MongoDB
+        const aiResponse = await AIService.analyzeResume(resumeText)
+        const parsed = JSON.parse(aiResponse)
+
+        // Compress + persist PDF to MongoDB along with parsed content
         const compressed = await gzipAsync(file.buffer)
         const savedResume = await Resume.create({
             userId,
             originalName: file.originalname || "resume.pdf",
             buffer: compressed,
-            size: file.size
+            size: file.size,
+            role: parsed.role || "",
+            experience: parsed.experience || "",
+            projects: parsed.projects || [],
+            skills: parsed.skills || [],
+            resumeText
         })
-
-        const aiResponse = await AIService.analyzeResume(resumeText)
-        const parsed = JSON.parse(aiResponse)
 
         return {
             resumeId: savedResume._id,
@@ -219,20 +252,35 @@ export class InterviewService {
 
         const existingFollowUps = interview.questions.filter(
             q => q.isFollowUp && q.parentQuestionIndex === rootParentIndex
-        ).length
+        )
 
-        if (existingFollowUps >= MAX_FOLLOW_UPS_PER_QUESTION) {
+        if (existingFollowUps.length >= MAX_FOLLOW_UPS_PER_QUESTION) {
             return { question: null }
         }
 
         // Always generate followup based on the root parent question for coherence
         const rootQuestion = interview.questions[rootParentIndex]
 
+        // If this is the 2nd follow-up, pass context of the 1st follow-up question and answer
+        let priorFollowUp = ""
+        if (existingFollowUps.length === 1) {
+            const firstFU = existingFollowUps[0]
+            priorFollowUp = `q:${firstFU.question}|a:${firstFU.answer || "none"}`
+        }
+
+        const lastResume = await Resume.findOne({ userId: interview.userId }).sort({ createdAt: -1 })
+        const skills = lastResume?.skills || []
+
         const followUpText = await AIService.generateFollowUp({
             question: rootQuestion.question,
             answer,
             score,
-            trigger
+            trigger,
+            role: interview.role,
+            experience: interview.experience,
+            mode: interview.mode,
+            skills,
+            priorFollowUp
         })
 
         const followUpQuestion = {
@@ -268,6 +316,9 @@ export class InterviewService {
         const avg = (v) => count ? Number((v / count).toFixed(1)) : 0
 
         interview.finalScore = avg(totals.score)
+        interview.confidence = avg(totals.confidence)
+        interview.communication = avg(totals.communication)
+        interview.correctness = avg(totals.correctness)
         interview.status = "Completed"
 
         const qaContext = questions
@@ -290,9 +341,13 @@ export class InterviewService {
             })
         } catch {}
 
-        const weakTopics = questions
-            .filter(q => (q.score || 0) < 5 && q.topic)
-            .map(q => ({ topic: q.topic, score: q.score || 0, answer: q.answer || "" }))
+        let weakTopics = questions
+            .filter(q => (q.score || 0) < 8)
+            .map(q => ({ topic: q.topic || "General", score: q.score || 0, answer: q.answer || "" }))
+
+        if (weakTopics.length === 0) {
+            weakTopics = questions.map(q => ({ topic: q.topic || "General", score: q.score || 0, answer: q.answer || "" }))
+        }
 
         if (weakTopics.length > 0) {
             try {
@@ -302,21 +357,25 @@ export class InterviewService {
                     weakTopics
                 })
                 interview.improvementPlan = JSON.parse(planRaw)
-            } catch {}
+            } catch (err) {
+                console.error("Failed to generate AI improvement plan, using fallback:", err)
+            }
+        }
+
+        if (!interview.improvementPlan || interview.improvementPlan.length === 0) {
+            interview.improvementPlan = weakTopics.slice(0, 3).map(wt => ({
+                topic: wt.topic,
+                suggestions: [
+                    `Review and practice foundational concepts in ${wt.topic}.`,
+                    `Study advanced design patterns, tradeoffs, and industry best practices related to ${wt.topic}.`
+                ]
+            }))
         }
 
         await interview.save()
+        await interview.populate("userId", "name")
 
-        return {
-            interviewId: interview._id,
-            finalScore: avg(totals.score),
-            confidence: avg(totals.confidence),
-            communication: avg(totals.communication),
-            correctness: avg(totals.correctness),
-            summary: interview.summary,
-            improvementPlan: interview.improvementPlan || [],
-            questionWiseScore: this.#formatQuestions(questions)
-        }
+        return this.#buildReport(interview)
     }
 
     static async makePublic(interviewId, userId) {
@@ -335,13 +394,13 @@ export class InterviewService {
     }
 
     static async getInterviewReport(interviewId) {
-        const interview = await Interview.findById(interviewId)
+        const interview = await Interview.findById(interviewId).populate("userId", "name")
         if (!interview) throw { status: 404, message: "Interview not found" }
         return this.#buildReport(interview)
     }
 
     static async getPublicReport(interviewId) {
-        const interview = await Interview.findById(interviewId)
+        const interview = await Interview.findById(interviewId).populate("userId", "name")
         if (!interview) throw { status: 404, message: "Interview not found" }
         if (!interview.isPublic) throw { status: 403, message: "This report is not public" }
         return this.#buildReport(interview)
@@ -377,37 +436,27 @@ export class InterviewService {
     }
 
     static #buildReport(interview) {
-        const questions = interview.questions
-        const count = questions.length
-
-        const totals = questions.reduce(
-            (acc, q) => ({
-                confidence: acc.confidence + (q.confidence || 0),
-                communication: acc.communication + (q.communication || 0),
-                correctness: acc.correctness + (q.correctness || 0)
-            }),
-            { confidence: 0, communication: 0, correctness: 0 }
-        )
-
-        const avg = (v) => count ? Number((v / count).toFixed(1)) : 0
-
         return {
             interviewId: interview._id,
+            candidateName: interview.userId?.name || "",
+            role: interview.role,
+            experience: interview.experience,
+            resumeText: interview.resumeText || "",
             finalScore: interview.finalScore,
-            confidence: avg(totals.confidence),
-            communication: avg(totals.communication),
-            correctness: avg(totals.correctness),
+            confidence: interview.confidence || 0,
+            communication: interview.communication || 0,
+            correctness: interview.correctness || 0,
             summary: interview.summary || "",
             improvementPlan: interview.improvementPlan || [],
-            questionWiseScore: this.#formatQuestions(questions),
+            questionWiseScore: this.#formatQuestions(interview.questions),
             isPublic: interview.isPublic
         }
     }
 
     static #resolveFollowUpTrigger(scores) {
+        if (scores.finalScore >= 8) return null
         if (scores.correctness < 5) return "probe_weakness"
-        if (scores.correctness >= 8 && scores.confidence >= 7) return "go_deeper"
-        return null
+        return "go_deeper"
     }
 
     static #formatQuestions(questions) {

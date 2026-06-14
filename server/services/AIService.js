@@ -4,22 +4,41 @@ import { PromptBuilder } from "./PromptBuilder.js"
 export class AIService {
     static #BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
     static #MODEL = "openai/gpt-oss-120b:free"
+    static #FALLBACK_MODEL = "google/gemma-4-31b-it:free"
 
     static async #call(messages) {
-        const response = await axios.post(
-            this.#BASE_URL,
-            { model: this.#MODEL, messages },
-            {
-                headers: {
-                    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-                    "Content-Type": "application/json"
+        try {
+            const response = await axios.post(
+                this.#BASE_URL,
+                { model: this.#MODEL, messages },
+                {
+                    headers: {
+                        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                        "Content-Type": "application/json"
+                    }
                 }
-            }
-        )
+            )
 
-        const content = response?.data?.choices?.[0]?.message?.content || ""
-        if (!content.trim()) throw new Error("AI returned empty response")
-        return content
+            const content = response?.data?.choices?.[0]?.message?.content || ""
+            if (!content.trim()) throw new Error("AI returned empty response")
+            return content
+        } catch (error) {
+            console.warn(`Primary model ${this.#MODEL} failed, retrying with fallback model ${this.#FALLBACK_MODEL}... Error: ${error.message}`)
+            const response = await axios.post(
+                this.#BASE_URL,
+                { model: this.#FALLBACK_MODEL, messages },
+                {
+                    headers: {
+                        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                        "Content-Type": "application/json"
+                    }
+                }
+            )
+
+            const content = response?.data?.choices?.[0]?.message?.content || ""
+            if (!content.trim()) throw new Error("Fallback AI returned empty response")
+            return content
+        }
     }
 
     static async analyzeResume(resumeText) {
@@ -33,8 +52,8 @@ export class AIService {
         const userPrompt = `role:${role}|exp:${experience}|mode:${mode}|skills:${skills.length ? skills.join(",") : "none"}|projects:${projects.length ? projects.join(",") : "none"}|resume:${resumeText || "none"}`
 
         const systemPrompt = mode === "Technical"
-            ? PromptBuilder.technicalQuestions(count)
-            : PromptBuilder.hrQuestions(count)
+            ? PromptBuilder.technicalQuestions(count, role, experience)
+            : PromptBuilder.hrQuestions(count, role, experience)
 
         return this.#call([
             { role: "system", content: systemPrompt },
@@ -49,10 +68,24 @@ export class AIService {
         ])
     }
 
-    static async generateFollowUp({ question, answer, score, trigger }) {
+    static async generateFollowUp({ question, answer, score, trigger, role, experience, mode, skills, priorFollowUp = "" }) {
+        const skillsList = Array.isArray(skills) ? skills.join(", ") : (skills || "none")
+        let userPrompt = `role: ${role || "none"}
+experience: ${experience || "none"}
+mode: ${mode || "none"}
+skills: ${skillsList}
+q: ${question}
+a: ${answer}
+score: ${score}
+trigger: ${trigger}`
+
+        if (priorFollowUp) {
+            userPrompt += `\npriorFollowUp: ${priorFollowUp}`
+        }
+
         return this.#call([
             { role: "system", content: PromptBuilder.followUpQuestion() },
-            { role: "user", content: `q:${question}\na:${answer}\nscore:${score}\ntrigger:${trigger}` }
+            { role: "user", content: userPrompt }
         ])
     }
 

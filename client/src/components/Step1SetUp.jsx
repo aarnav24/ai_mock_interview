@@ -1,7 +1,7 @@
 import { motion } from "motion/react"
 import { FaUserTie, FaBriefcase, FaFileUpload, FaMicrophoneAlt, FaChartLine, FaCheck } from 'react-icons/fa'
 import { BsArrowRight, BsFileEarmarkText, BsStars } from 'react-icons/bs'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { ServerUrl } from '../App'
 import { useDispatch, useSelector } from 'react-redux'
@@ -19,7 +19,6 @@ const Step1SetUp = ({ onStart, onResume }) => {
     const [questionCount, setQuestionCount] = useState(5)
     const [resumeFile, setResumeFile] = useState(null)
     const [loading, setLoading] = useState(false)
-    const [projects, setProjects] = useState([])
     const [skills, setSkills] = useState([])
     const [resumeText, setResumeText] = useState("")
     const [analysisDone, setAnalysisDone] = useState(false)
@@ -27,19 +26,38 @@ const Step1SetUp = ({ onStart, onResume }) => {
     const [errorMsg, setErrorMsg] = useState("")
     const [activeInterviewId, setActiveInterviewId] = useState(() => loadActiveInterview())
     const [resuming, setResuming] = useState(false)
+    const [fetchedResumeName, setFetchedResumeName] = useState("")
+    const [resumeSummary, setResumeSummary] = useState("")
+    const [resumesList, setResumesList] = useState([])
+    const [showResumeList, setShowResumeList] = useState(false)
 
     const creditCost = questionCount * 10
 
-    const handleUploadResume = async () => {
-        if (!resumeFile || analyzing) return
+    useEffect(() => {
+        const fetchAllResumes = async () => {
+            try {
+                const response = await axios.get(ServerUrl + "/api/interview/all-resumes", { withCredentials: true })
+                if (Array.isArray(response.data)) {
+                    setResumesList(response.data)
+                }
+            } catch (error) {
+                console.error("Failed to load resumes", error)
+            }
+        }
+        fetchAllResumes()
+    }, [])
+
+    const handleUploadResume = async (file) => {
+        const fileToUpload = file || resumeFile
+        if (!fileToUpload || analyzing) return
         setAnalyzing(true)
         const formdata = new FormData()
-        formdata.append("resume", resumeFile)
+        formdata.append("resume", fileToUpload)
         try {
             const result = await axios.post(ServerUrl + "/api/interview/resume", formdata, { withCredentials: true })
-            setProjects(result.data.projects || [])
             setSkills(result.data.skills || [])
             setResumeText(result.data.resumeText || "")
+            setResumeSummary(result.data.experience || "")
             setAnalysisDone(true)
         } catch (error) {
             console.error(error)
@@ -54,7 +72,7 @@ const Step1SetUp = ({ onStart, onResume }) => {
         try {
             const result = await axios.post(
                 ServerUrl + "/api/interview/generate-questions",
-                { role, experience, mode, resumeText, projects, skills, count: questionCount },
+                { role, experience, mode, resumeText, skills, count: questionCount },
                 { withCredentials: true }
             )
 
@@ -256,35 +274,95 @@ const Step1SetUp = ({ onStart, onResume }) => {
                             </div>
                         </div>
 
+                        {resumesList.length > 0 && !analysisDone && !analyzing && (
+                            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                                            <BsFileEarmarkText size={18} />
+                                        </span>
+                                        <div>
+                                            <p className="text-sm font-semibold text-gray-800">Use a previously uploaded resume</p>
+                                            <p className="text-xs text-gray-500">{resumesList.length} resume(s) available</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowResumeList(p => !p)}
+                                        className="rounded-full bg-emerald-100 hover:bg-emerald-200 px-4 py-2 text-xs font-semibold text-emerald-700 transition"
+                                    >
+                                        {showResumeList ? "Hide List" : "Show Resumes"}
+                                    </button>
+                                </div>
+                                {showResumeList && (
+                                    <div className="mt-3 max-h-40 overflow-y-auto space-y-2 pr-1">
+                                        {resumesList.map((res) => (
+                                            <div
+                                                key={res.resumeId}
+                                                onClick={() => {
+                                                    setRole(res.role || "")
+                                                    setExperience(res.experience || "")
+                                                    setFetchedResumeName(res.originalName || "resume.pdf")
+                                                    setSkills(res.skills || [])
+                                                    setResumeText(res.resumeText || "")
+                                                    setResumeSummary(res.experience || "")
+                                                    setAnalysisDone(true)
+                                                    setShowResumeList(false)
+                                                }}
+                                                className="flex items-center justify-between rounded-xl border border-gray-200 bg-white p-3 cursor-pointer hover:border-emerald-400 transition"
+                                            >
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-semibold text-gray-800 truncate">{res.originalName}</p>
+                                                    <p className="text-[10px] text-gray-400 mt-0.5">
+                                                        {res.role ? `${res.role}` : ""} {res.createdAt ? `• ${new Date(res.createdAt).toLocaleDateString()}` : ""}
+                                                    </p>
+                                                </div>
+                                                <span className="shrink-0 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">Select</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {!analysisDone && (
                             <motion.div
                                 whileHover={{ y: -2 }}
-                                onClick={() => document.getElementById("resumeUpload").click()}
+                                onClick={() => !analyzing && document.getElementById("resumeUpload").click()}
                                 className={`cursor-pointer rounded-2xl border-2 border-dashed p-5 transition sm:p-6 ${
                                     resumeFile ? "border-emerald-300 bg-emerald-50/60" : "border-gray-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/40"
                                 }`}>
-                                <input type="file" accept="application/pdf" id="resumeUpload" className="hidden" onChange={(e) => setResumeFile(e.target.files[0])} />
+                                <input
+                                    type="file"
+                                    accept="application/pdf"
+                                    id="resumeUpload"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        const file = e.target.files[0]
+                                        if (file) {
+                                            setResumeFile(file)
+                                            handleUploadResume(file)
+                                        }
+                                    }}
+                                />
                                 <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
                                     <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
-                                        {resumeFile ? <BsFileEarmarkText size={22} /> : <FaFileUpload size={20} />}
+                                        {analyzing ? (
+                                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+                                        ) : resumeFile ? (
+                                            <BsFileEarmarkText size={22} />
+                                        ) : (
+                                            <FaFileUpload size={20} />
+                                        )}
                                     </span>
                                     <div className="min-w-0 flex-1">
                                         <p className="truncate text-sm font-semibold text-gray-800">
-                                            {resumeFile ? resumeFile.name : "Personalize with your resume"}
+                                            {analyzing ? "Analyzing resume..." : resumeFile ? resumeFile.name : "Personalize with your resume"}
                                         </p>
                                         <p className="mt-1 text-xs leading-5 text-gray-500">
-                                            {resumeFile ? "PDF selected. Analyze it to tailor your questions." : "Optional PDF upload for questions based on your skills and projects."}
+                                            {analyzing ? "Reading skills and experience..." : resumeFile ? "Analyzing your resume to tailor the interview." : "Optional PDF upload for questions based on your skills and experience."}
                                         </p>
                                     </div>
-                                    {resumeFile && (
-                                        <button
-                                            type="button"
-                                            disabled={analyzing}
-                                            onClick={(e) => { e.stopPropagation(); handleUploadResume() }}
-                                            className="shrink-0 rounded-full bg-[#151815] px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60">
-                                            {analyzing ? "Analyzing..." : "Analyze resume"}
-                                        </button>
-                                    )}
                                 </div>
                             </motion.div>
                         )}
@@ -294,21 +372,32 @@ const Step1SetUp = ({ onStart, onResume }) => {
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 className="space-y-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5">
-                                <div className="flex items-center gap-3">
-                                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 text-white"><FaCheck size={13} /></span>
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-emerald-950">Resume ready</h3>
-                                        <p className="text-xs text-emerald-700">Your interview will use this context.</p>
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3">
+                                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 text-white"><FaCheck size={13} /></span>
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-emerald-950">Resume ready</h3>
+                                            <p className="text-xs text-emerald-700">Uploaded: {resumeFile ? resumeFile.name : fetchedResumeName || "Resume Analysis"}</p>
+                                        </div>
                                     </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setResumeFile(null)
+                                            setFetchedResumeName("")
+                                            setSkills([])
+                                            setResumeText("")
+                                            setAnalysisDone(false)
+                                        }}
+                                        className="rounded-full bg-red-100 hover:bg-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 transition"
+                                    >
+                                        Upload New
+                                    </button>
                                 </div>
-                                {projects.length > 0 && (
-                                    <div>
-                                        <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-emerald-800">Projects</p>
-                                        <ul className="list-inside list-disc space-y-1 text-sm text-gray-600">
-                                            {projects.map((p, i) => <li key={i}>{p}</li>)}
-                                        </ul>
-                                    </div>
-                                )}
+                                <div>
+                                    <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-emerald-800">Experience Summary</p>
+                                    <p className="text-sm text-gray-700 leading-relaxed bg-white rounded-xl border border-emerald-100 p-3 shadow-sm">{resumeSummary || "None specified"}</p>
+                                </div>
                                 {skills.length > 0 && (
                                     <div>
                                         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-emerald-800">Skills</p>

@@ -6,6 +6,24 @@ const sendError = (res, error) => {
     return res.status(status).json({ message })
 }
 
+export const getLastResume = async (req, res) => {
+    try {
+        const result = await InterviewService.getLastResume(req.userId)
+        return res.json(result)
+    } catch (error) {
+        return sendError(res, error)
+    }
+}
+
+export const getAllResumes = async (req, res) => {
+    try {
+        const result = await InterviewService.getAllResumes(req.userId)
+        return res.json(result)
+    } catch (error) {
+        return sendError(res, error)
+    }
+}
+
 export const analyzeResume = async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ message: "Resume file is required" })
