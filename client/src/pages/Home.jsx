@@ -97,8 +97,8 @@ const Home = () => {
 
       <main>
         <section className="relative px-5 pb-24 pt-16 sm:px-6 lg:pb-32 lg:pt-24">
-          <div className="pointer-events-none absolute left-[-12rem] top-0 h-[30rem] w-[30rem] rounded-full bg-emerald-200/30 blur-3xl" />
-          <div className="pointer-events-none absolute right-[-10rem] top-24 h-[26rem] w-[26rem] rounded-full bg-lime-200/30 blur-3xl" />
+          <div className="pointer-events-none absolute left-48 top-0 h-120 w-120 rounded-full bg-emerald-200/30 blur-3xl" />
+          <div className="pointer-events-none absolute right-40 top-24 h-104 w-104 rounded-full bg-lime-200/30 blur-3xl" />
 
           <div className="relative mx-auto grid max-w-6xl items-center gap-16 lg:grid-cols-[1.05fr_.95fr]">
             <motion.div
@@ -160,11 +160,11 @@ const Home = () => {
               initial={{ opacity: 0, x: 35 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.7, delay: 0.15 }}
-              className="relative mx-auto w-full max-w-[500px]"
+              className="relative mx-auto w-full max-w-125"
             >
               <div className="absolute -inset-5 -rotate-3 rounded-[2.5rem] bg-emerald-200/50" />
-              <div className="relative overflow-hidden rounded-[2rem] border border-white/80 bg-white p-4 shadow-[0_30px_80px_-35px_rgba(17,24,39,0.45)]">
-                <div className="rounded-[1.5rem] bg-[#151815] p-6 text-white">
+              <div className="relative overflow-hidden rounded-4xl border border-white/80 bg-white p-4 shadow-[0_30px_80px_-35px_rgba(17,24,39,0.45)]">
+                <div className="rounded-3xl bg-[#151815] p-6 text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-400 text-[#151815]">
@@ -219,11 +219,10 @@ const Home = () => {
                 transition={{ duration: 3, repeat: Infinity }}
                 className="absolute -bottom-8 -left-5 hidden items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-xl sm:flex"
               >
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
                   <BsShieldCheck size={18} />
                 </span>
                 <div>
-                  <p className="text-xs text-gray-500">Private practice</p>
                   <p className="text-sm font-semibold">Built for growth</p>
                 </div>
               </motion.div>
@@ -296,7 +295,7 @@ const Home = () => {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, amount: 0.2 }}
                   transition={{ duration: 0.45, delay: index * 0.08 }}
-                  className={`group grid overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.06] p-6 transition hover:border-emerald-400/40 hover:bg-white/[0.09] sm:grid-cols-[1fr_auto] sm:items-center sm:p-8 ${item.className || ''}`}
+                  className={`group grid overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/6 p-6 transition hover:border-emerald-400/40 hover:bg-white/9 sm:grid-cols-[1fr_auto] sm:items-center sm:p-8 ${item.className || ''}`}
                 >
                   <div>
                     <span className="inline-flex items-center gap-2 rounded-full bg-emerald-400/10 px-3 py-1.5 text-xs font-medium text-emerald-300">
@@ -315,9 +314,9 @@ const Home = () => {
 
         <section className="px-5 py-28 sm:px-6 lg:py-36">
           <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[.8fr_1.2fr]">
-            <div className="rounded-[2rem] bg-emerald-500 p-8 text-emerald-950 sm:p-10">
+            <div className="rounded- bg-emerald-500 p-8 text-emerald-950 sm:p-10">
               <RiDoubleQuotesL size={32} className="opacity-50" />
-              <p className="mt-8 text-2xl font-semibold leading-snug tracking-[-0.025em]">
+              <p className="mt-8 text-2xl font-semibold leading-snug tracking-tight">
                 Great interviews are rarely improvised. They are practiced, reviewed, and practiced again.
               </p>
               <div className="mt-10 flex items-center gap-3 text-sm font-medium">
@@ -328,7 +327,7 @@ const Home = () => {
               </div>
             </div>
 
-            <div className="relative overflow-hidden rounded-[2rem] bg-white p-8 shadow-sm ring-1 ring-gray-200 sm:p-12">
+            <div className="relative overflow-hidden rounded-4xl bg-white p-8 shadow-sm ring-1 ring-gray-200 sm:p-12">
               <div className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-100 blur-2xl" />
               <div className="relative">
                 <span className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600">

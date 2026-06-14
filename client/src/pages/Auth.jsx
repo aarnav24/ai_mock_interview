@@ -76,7 +76,7 @@ const Auth = ({ isModel = false }) => {
       transition={{ duration: 0.45 }}
       className={`relative overflow-hidden bg-white ${isModel
           ? 'w-full rounded-[1.75rem] p-6 shadow-2xl shadow-gray-900/20 sm:p-8'
-          : 'rounded-[2rem] border border-gray-200 p-7 shadow-2xl shadow-gray-900/10 sm:p-10'
+          : 'rounded-4xl border border-gray-200 p-7 shadow-2xl shadow-gray-900/10 sm:p-10'
         }`}
     >
 

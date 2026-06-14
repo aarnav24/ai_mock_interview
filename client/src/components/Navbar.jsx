@@ -108,7 +108,7 @@ const Navbar = () => {
               <motion.div
                 initial={{ opacity: 0, y: 8, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                className="absolute right-[-3.5rem] mt-3 w-72 overflow-hidden rounded-2xl border border-gray-100 bg-white p-2 shadow-2xl shadow-gray-900/10 sm:right-0"
+                className="absolute right-14 mt-3 w-72 overflow-hidden rounded-2xl border border-gray-100 bg-white p-2 shadow-2xl shadow-gray-900/10 sm:right-0"
               >
                 <div className="rounded-xl bg-[#151815] p-4 text-white">
                   <div className="flex items-center justify-between">

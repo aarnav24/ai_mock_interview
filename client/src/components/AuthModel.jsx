@@ -33,7 +33,7 @@ const AuthModel = ({ onClose }) => {
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
-      className="fixed inset-0 z-[999] flex items-center justify-center bg-[#151815]/55 px-4 py-6 backdrop-blur-md"
+      className="fixed inset-0 z-999 flex items-center justify-center bg-[#151815]/55 px-4 py-6 backdrop-blur-md"
       role="dialog"
       aria-modal="true"
       aria-label="Sign in"

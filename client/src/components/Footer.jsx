@@ -20,7 +20,7 @@ const Footer = () => {
 
   return (
     <footer className="bg-[#f6f7f4] px-4 pb-6 pt-8 sm:px-6">
-      <div className="mx-auto max-w-6xl overflow-hidden rounded-[2rem] bg-[#151815] text-white shadow-2xl shadow-gray-900/10">
+      <div className="mx-auto max-w-6xl overflow-hidden rounded-4xl bg-[#151815] text-white shadow-2xl shadow-gray-900/10">
         <div className="grid gap-10 border-b border-white/10 px-6 py-10 sm:px-10 lg:grid-cols-[1.3fr_.7fr] lg:items-center lg:px-12 lg:py-12">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-emerald-400/10 px-3 py-1.5 text-xs font-medium text-emerald-300">
@@ -80,7 +80,7 @@ const Footer = () => {
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Why Naam</h3>
             <div className="mt-5 flex flex-col gap-3 text-sm text-gray-300">
-              <span className="flex items-center gap-2"><BsShieldCheck className="text-emerald-400" /> Private practice</span>
+              <span className="flex items-center gap-2"><BsShieldCheck className="text-emerald-400" /> Interactive interview</span>
               <span>Resume-based questions</span>
               <span>Technical and HR modes</span>
             </div>
@@ -89,7 +89,7 @@ const Footer = () => {
 
         <div className="flex flex-col gap-2 border-t border-white/10 px-6 py-5 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between sm:px-10 lg:px-12">
           <p>© {new Date().getFullYear()} Naam. Practice with purpose.</p>
-          <p>Built to help you give your best answer.</p>
+          <p>Built to help you ace your next interview.</p>
         </div>
       </div>
 
