@@ -13,7 +13,7 @@ const plans = [
     id: 'free',
     name: 'Free',
     price: 'Rs 0',
-    credits: 200,
+    credits: 300,
     description: 'Perfect for beginners starting interview preparation.',
     features: [
       '300 AI Interview Credits',
@@ -217,8 +217,8 @@ const Pricing = () => {
               )}
 
               {plan.default && (
-                <div className="relative mt-auto rounded-2xl bg-gray-50 p-4 text-sm text-gray-500 ring-1 ring-gray-200">
-                  You already start with enough credits to try the core interview flow.
+                <div className="relative mt-3 rounded-2xl bg-gray-50 px-2 py-4 flex justify-center text-sm text-gray-500 ring-1 ring-gray-200 ">
+                  You already start with enough credits to try
                 </div>
               )}
             </motion.article>

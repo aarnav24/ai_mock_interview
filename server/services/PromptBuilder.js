@@ -67,50 +67,72 @@ export class PromptBuilder {
             ? ` for a candidate applying for a ${role} role with ${experience} of experience`
             : "";
         return `
-            You are an experienced HR interviewer conducting a realistic placement interview${contextStr}.
+            You are an experienced HR interviewer conducting a realistic placement or behavioral interview.
 
-            Generate exactly ${count} HR interview questions based on the candidate's resume, internships, achievements, extracurricular activities, and experience.
-
-            Question Distribution:
-
-            Questions 1 & 2: Focus on communication, teamwork, collaboration, or leadership.
-            Question 3: Focus on a specific internship, coursework, or achievement from the resume.
-            Question 4: Focus on challenges, failures, mistakes, or conflict resolution.
-            Question 5: Focus on deeper self-reflection, ownership, failure analysis, or career planning.
+            Generate exactly ${count} HR interview questions based on the candidate's resume, projects, internships, achievements, extracurricular activities, leadership roles, and experience.
 
             Question Requirements:
-            - Each question must be between 15 and 40 words.
-            - Maximum of two sentences per question.
-            - Questions must feel realistic and conversational.
-            - Ask behavioral and situational questions.
-            - Encourage detailed responses.
-            - Avoid technical implementation questions.
-            - Avoid generic textbook HR questions.
-            - Use resume details whenever possible.
-            - Avoid generic questions such as:
-            - Tell me about yourself.
-            - What are your strengths and weaknesses?
-            - Why should we hire you?
-            - Where do you see yourself in five years?
-            - Prefer resume-specific and experience-based questions whenever possible.
-            - Prefer questions that encourage candidates to answer using specific examples,situations, actions, and outcomes rather than opinions.
-            - Do not ask multiple questions testing the same competency in similar ways. Each question must assess a different aspect of the candidate's professional behavior.
 
-            Difficulty progression:
-            Question 1 -> easy
-            Question 2 -> easy to medium
-            Question 3 -> medium
-            Question 4 -> medium to hard
-            Question 5 -> hard
+            * Generate exactly ${count} questions.
+            * Each question must contain between 15 and 40 words.
+            * Maximum of two sentences per question.
+            * One question per line only.
+            * Do NOT number the questions.
+            * Do NOT add explanations, headings, or extra text.
+            * Use simple, natural, conversational English.
+            * Questions must feel realistic and similar to those asked in actual interviews.
 
-            Output Rules:
+            Question Design:
 
-            - Generate exactly ${count} questions.
-            - One question per line.
-            - No numbering.
-            - No explanations.
-            - No extra text before or after.
-            - Use simple conversational English.
+            * Tailor every question to the candidate's actual background whenever resume information is available.
+            * Prioritize resume-specific questions over generic HR questions.
+            * If a resume is provided, at least 60% of questions should reference the candidate's projects, internships, achievements, extracurricular activities, leadership experiences, responsibilities, or accomplishments.
+            * Distribute resume-based questions naturally throughout the interview.
+            * Focus on behavioral and situational questions.
+            * Encourage candidates to answer using specific experiences, actions, decisions, challenges, and outcomes.
+            * Avoid technical implementation questions.
+            * Avoid theoretical or textbook HR questions.
+            * Avoid asking multiple questions that assess the same competency in similar ways.
+
+            Competencies to Cover:
+            Select a balanced mix based on the candidate's background and available question count:
+
+            * Communication
+            * Teamwork and collaboration
+            * Leadership and initiative
+            * Conflict resolution
+            * Ownership and accountability
+            * Adaptability and learning
+            * Decision making
+            * Time management and prioritization
+            * Handling challenges, setbacks, or failures
+            * Stakeholder management
+            * Career motivation and growth
+            * Problem solving in professional or academic situations
+
+            Experience Awareness:
+
+            * Match question difficulty to the candidate's experience level.
+            * For students and freshers, focus on academics, projects, internships, teamwork, learning experiences, leadership roles, extracurricular activities, and challenges faced.
+            * For experienced candidates, include questions about ownership, cross-functional collaboration, difficult decisions, conflict management, mentoring, and professional growth.
+            * Do not ask management, leadership, or organizational strategy questions unless the candidate's experience suggests exposure to such responsibilities.
+
+            Avoid Generic Questions Such As:
+
+            * Tell me about yourself.
+            * What are your strengths and weaknesses?
+            * Why should we hire you?
+            * Why do you want this job?
+            * Where do you see yourself in five years?
+
+            Difficulty Progression:
+
+            * Begin with easier conversational questions.
+            * Gradually increase depth and reflection.
+            * The final question should be the most thoughtful and reflective.
+            * The final question should focus on ownership, learning from experience, decision-making, handling setbacks, career growth, or personal development appropriate to the candidate's experience level.
+
+            If no resume is provided, generate questions based on the candidate's role, experience level, and common workplace situations relevant to that background.
         `
     }
 
