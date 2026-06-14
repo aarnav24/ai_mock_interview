@@ -31,11 +31,14 @@ const interviewSchema = new mongoose.Schema({
     mode:       { type: String, enum: ["Technical", "HR"], required: true },
     resumeText: { type: String, default: "" },
     questions:  [questionSchema],
-    finalScore: { type: Number, default: 0 },
-    status:     { type: String, enum: ["Incomplete", "Completed"], default: "Incomplete" },
-    summary:    { type: String, default: "" },
+    finalScore:    { type: Number, default: 0 },
+    confidence:    { type: Number, default: 0 },
+    communication: { type: Number, default: 0 },
+    correctness:   { type: Number, default: 0 },
+    status:        { type: String, enum: ["Incomplete", "Completed"], default: "Incomplete" },
+    summary:       { type: String, default: "" },
     improvementPlan: [improvementItemSchema],
-    isPublic:   { type: Boolean, default: false }
+    isPublic:      { type: Boolean, default: false }
 }, { timestamps: true })
 
 const Interview = mongoose.model("Interview", interviewSchema)

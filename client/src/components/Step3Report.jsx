@@ -51,7 +51,11 @@ const Step3Report = ({ report }) => {
         correctness = 0,
         summary = "",
         improvementPlan = [],
-        questionWiseScore = []
+        questionWiseScore = [],
+        candidateName = "",
+        role = "",
+        experience = "",
+        resumeText = ""
     } = report
 
     const questionScoreData = questionWiseScore.map((q, i) => ({ name: `Q${i + 1}`, score: q.score || 0 }))
@@ -82,7 +86,7 @@ const Step3Report = ({ report }) => {
         const cw = pageWidth - margin * 2
         let y = margin
 
-        const TNR = "times"
+        const TNR = "helvetica"
 
         const section = (title) => {
             if (y > pageHeight - 40) { doc.addPage(); y = margin }
@@ -97,11 +101,25 @@ const Step3Report = ({ report }) => {
         }
 
         doc.setFont(TNR, "bold")
-        doc.setFontSize(20)
+        doc.setFontSize(18)
         doc.setTextColor(0, 0, 0)
         doc.text("AI Mock Interview - Performance Report", pageWidth / 2, y, { align: "center" })
-        y += 10
+        y += 8
+
+        // Candidate details
         doc.setFont(TNR, "normal")
+        doc.setFontSize(9)
+        doc.setTextColor(80, 80, 80)
+        const details = []
+        if (candidateName) details.push(`Candidate: ${candidateName}`)
+        if (role) details.push(`Role: ${role}`)
+        if (experience) details.push(`Experience: ${experience}`)
+        if (details.length > 0) {
+            doc.text(details.join("   |   "), pageWidth / 2, y, { align: "center" })
+            y += 6
+        }
+
+        doc.setFont(TNR, "bold")
         doc.setFontSize(10)
         doc.setTextColor(100)
         doc.text(`Final Score: ${finalScore}/10`, pageWidth / 2, y, { align: "center" })
@@ -130,7 +148,8 @@ const Step3Report = ({ report }) => {
             doc.setFont(TNR, "normal")
             doc.setFontSize(10)
             doc.setTextColor(30, 30, 30)
-            const lines = doc.splitTextToSize(summary, cw)
+            const cleanSummary = summary.replace(/\r/g, "").replace(/\n/g, " ").replace(/\s+/g, " ").trim()
+            const lines = doc.splitTextToSize(cleanSummary, cw)
             lines.forEach(line => {
                 if (y > pageHeight - 20) { doc.addPage(); y = margin }
                 doc.text(line, margin, y)
@@ -143,7 +162,8 @@ const Step3Report = ({ report }) => {
         doc.setFont(TNR, "normal")
         doc.setFontSize(10)
         doc.setTextColor(30, 30, 30)
-        const adviceLines = doc.splitTextToSize(advice, cw)
+        const cleanAdvice = advice.replace(/\r/g, "").replace(/\n/g, " ").replace(/\s+/g, " ").trim()
+        const adviceLines = doc.splitTextToSize(cleanAdvice, cw)
         adviceLines.forEach(line => {
             if (y > pageHeight - 20) { doc.addPage(); y = margin }
             doc.text(line, margin, y)
@@ -160,7 +180,8 @@ const Step3Report = ({ report }) => {
                 doc.text(`- ${item.topic}`, margin + 2, y)
                 y += 5
                 item.suggestions?.forEach(s => {
-                    const sLines = doc.splitTextToSize(`  - ${s}`, cw - 8)
+                    const cleanS = s.replace(/\r/g, "").replace(/\n/g, " ").replace(/\s+/g, " ").trim()
+                    const sLines = doc.splitTextToSize(`  - ${cleanS}`, cw - 8)
                     sLines.forEach(sl => {
                         if (y > pageHeight - 20) { doc.addPage(); y = margin }
                         doc.setFont(TNR, "normal")
@@ -221,6 +242,13 @@ const Step3Report = ({ report }) => {
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600">Interview complete</p>
                             <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">Your performance report</h1>
+                            {candidateName && (
+                                <p className="mt-2 text-sm text-gray-700 font-medium">
+                                    Candidate: <span className="text-emerald-700">{candidateName}</span>
+                                    {role && `  |  Role: ${role}`}
+                                    {experience && `  |  Experience: ${experience}`}
+                                </p>
+                            )}
                             <p className="mt-2 text-sm text-gray-500">A clear view of what worked and where to focus next.</p>
                         </div>
                     </div>

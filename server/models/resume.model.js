@@ -6,7 +6,12 @@ const resumeSchema = new mongoose.Schema({
     originalName: { type: String, default: "" },
     buffer:       { type: Buffer, required: true },
     size:         { type: Number },
-    compressed:   { type: Boolean, default: true }
+    compressed:   { type: Boolean, default: true },
+    role:         { type: String, default: "" },
+    experience:   { type: String, default: "" },
+    projects:     [{ type: String }],
+    skills:       [{ type: String }],
+    resumeText:   { type: String, default: "" }
 }, { timestamps: true })
 
 const Resume = resumeConn.model("Resume", resumeSchema)

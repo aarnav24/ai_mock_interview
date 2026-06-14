@@ -325,6 +325,9 @@ const Step2Interview = ({ interviewData, onFinish }) => {
 
             const { feedback: fb, score, followUpTrigger } = result.data
             setFeedback(fb)
+            
+            // Disable ability to answer/interact while AI is speaking feedback
+            setCanAnswer(false)
             await speakText(fb)
 
             setLastScore(score)
@@ -340,11 +343,27 @@ const Step2Interview = ({ interviewData, onFinish }) => {
                     )
                     const followUpQuestion = fuResult.data?.question
                     if (followUpQuestion) {
+                        let newQuestions
                         setQuestions(prev => {
                             const updated = [...prev]
                             updated.splice(currentIndex + 1, 0, followUpQuestion)
+                            newQuestions = updated
                             return updated
                         })
+                        
+                        // Automatically proceed to follow-up question immediately after feedback ends
+                        setCanAnswer(false)
+                        setAnswer("")
+                        setFeedback("")
+                        setLastScore(null)
+                        setCurrentIndex(prev => prev + 1)
+                        // Wait for state updates to settle, then play the new follow-up question
+                        setTimeout(async () => {
+                            await speakText(followUpQuestion.question)
+                            setCanAnswer(true)
+                            setTimeLeft(followUpQuestion.timeLimit)
+                        }, 100)
+                        return // Skip standard next/report path because we just auto-advanced
                     }
                 } catch (err) {
                     console.error("[follow-up] error:", err)
@@ -352,8 +371,13 @@ const Step2Interview = ({ interviewData, onFinish }) => {
                     setIsFetchingFollowup(false)
                 }
             }
+            
+            // Allow clicking next/view report after feedback finishes
+            setCanAnswer(true)
+
         } catch (error) {
             console.error("[submit] error:", error)
+            setCanAnswer(true)
         } finally {
             setIsSubmitting(false)
         }
@@ -579,7 +603,7 @@ const Step2Interview = ({ interviewData, onFinish }) => {
                         placeholder="Type or speak your answer here..."
                         onChange={(e) => setAnswer(e.target.value)}
                         value={answer}
-                        disabled={!!feedback}
+                        disabled={!canAnswer || !!feedback}
                         className="min-h-72 flex-1 resize-none rounded-3xl border border-gray-200 bg-gray-50/80 p-4 text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100 disabled:opacity-60 sm:p-6"
                     />
 
@@ -645,7 +669,8 @@ const Step2Interview = ({ interviewData, onFinish }) => {
                             <p className="font-medium leading-7 text-emerald-800">{feedback}</p>
                             <button
                                 onClick={handleNext}
-                                className="flex w-full items-center justify-center gap-2 rounded-full bg-[#151815] py-3 text-sm font-semibold text-white shadow-lg shadow-gray-900/15 transition hover:bg-emerald-700"
+                                disabled={!canAnswer || isSubmitting || isAIPlaying || isFetchingFollowUp}
+                                className="flex w-full items-center justify-center gap-2 rounded-full bg-[#151815] py-3 text-sm font-semibold text-white shadow-lg shadow-gray-900/15 transition hover:bg-emerald-700 disabled:opacity-50"
                             >
                                 {currentIndex === questions.length - 1 ? "View Report" : "Next Question"}
                                 <BsArrowRight size={16} />

@@ -24,8 +24,11 @@ export class PromptBuilder {
         `
     }
 
-    static technicalQuestions(count = 5) {
-        return `You are a real human experienced interviewer conducting a professional interview.
+    static technicalQuestions(count = 5, role = "", experience = "") {
+        const contextStr = role || experience 
+            ? ` for a candidate applying for a ${role} role with ${experience} of experience`
+            : "";
+        return `You are a real human experienced interviewer conducting a professional interview${contextStr}.
                     Speak in simple, natural English as if you are directly talking to the candidate.
                     Generate exactly ${count} interview questions from the information provided.
 
@@ -41,15 +44,15 @@ export class PromptBuilder {
 
                     Question Design:
                     - Tailor every question to the candidate's role and experience.
-                    - Use the candidate's projects, skills, and resume details whenever relevant.
-                    - Exactly 3 questions must directly reference the candidate's projects, internships, coursework, or experience. Do not place all project-based questions consecutively. Distribute them naturally throughout the interview.
+                    - Use the candidate's skills and resume details whenever relevant.
+                    - Exactly 3 questions must directly reference the candidate's internships, coursework, or experience. Do not place all experience-based questions consecutively. Distribute them naturally throughout the interview.
                     - The remaining 2 questions (not necessarily in order) should test skills through practical scenarios, implementation decisions, tradeoffs, problem-solving discussions, or challenges directly related to the candidate's demonstrated skills and experience.Do not ask questions requiring expertise not evidenced in the candidate's resume.
                     - Question 5 must require deeper reasoning, tradeoff analysis, debugging decisions, optimization strategies, scalability considerations, or architectural thinking and can be of upto 35 words. But keep in mind the experience, don't aske deep system design and scalabiliy questions to candidates with less experience.
                     - If resume is not provided, ask questions according to the role and experience of the user. For example, questions related to the top skills in demand for that job role
                     - Prefer questions about implementation choices, debugging experiences, optimization, scalability, tradeoffs, and lessons learned.
                     - Avoid generic textbook questions.
                     - Ask practical questions that a real interviewer would ask.
-                    - Prefer project-based and experience-based questions over theoretical questions.
+                    - Prefer experience-based questions over theoretical questions.
 
                     Difficulty progression:
                     Question 1 -> easy
@@ -59,16 +62,19 @@ export class PromptBuilder {
                     Question 5 -> hard`
     }
 
-    static hrQuestions(count = 5) {
+    static hrQuestions(count = 5, role = "", experience = "") {
+        const contextStr = role || experience 
+            ? ` for a candidate applying for a ${role} role with ${experience} of experience`
+            : "";
         return `
-            You are an experienced HR interviewer conducting a realistic placement interview.
+            You are an experienced HR interviewer conducting a realistic placement interview${contextStr}.
 
-            Generate exactly ${count} HR interview questions based on the candidate's resume, projects, internships, achievements, extracurricular activities, and experience.
+            Generate exactly ${count} HR interview questions based on the candidate's resume, internships, achievements, extracurricular activities, and experience.
 
             Question Distribution:
 
             Questions 1 & 2: Focus on communication, teamwork, collaboration, or leadership.
-            Question 3: Focus on a specific project, internship, or achievement from the resume.
+            Question 3: Focus on a specific internship, coursework, or achievement from the resume.
             Question 4: Focus on challenges, failures, mistakes, or conflict resolution.
             Question 5: Focus on deeper self-reflection, ownership, failure analysis, or career planning.
 
@@ -181,24 +187,65 @@ export class PromptBuilder {
 
     static followUpQuestion() {
         return `
-            You are an expert human interviewer conducting a technical or behavioral interview. Your task is to ask a single, natural follow-up question based on the candidate's previous answer.
+            You are an expert human interviewer conducting a technical or behavioral interview.
+
+            Your task is to ask a single natural follow-up question based on the candidate's previous answer.
 
             The user will provide the interview context in this exact format:
+
+            role: [Candidate's target role]
+            experience: [Candidate's experience level]
+            mode: [Technical OR HR]
+            skills: [List of candidate skills]
             q: [The original question asked]
             a: [The candidate's raw transcript/answer]
             score: [The 0-10 evaluation score of their answer]
             trigger: [probe_weakness OR go_deeper]
 
             Trigger Rules:
-            - If trigger is "probe_weakness": The candidate struggled (indicated by a lower score or incomplete answer). Ask a simpler, foundational question to guide them, or ask them to clarify the specific concept they missed. Do NOT tell them they were wrong or mention their score.
-            - If trigger is "go_deeper": The candidate gave a strong answer. Push their limits by asking about a specific edge case, tradeoff, scalability issue, optimization strategy, or alternative architecture related to their answer.
+
+            * If trigger is "probe_weakness":
+
+              * The candidate struggled or gave an incomplete answer.
+              * Ask a simpler question that helps them explain their reasoning, clarify a concept, describe an example, or expand on a missing detail.
+              * Stay closely related to the original question and answer.
+              * Guide the candidate toward demonstrating their understanding without giving away the answer.
+              * Do NOT mention mistakes, weaknesses, scores, or evaluation results.
+
+            * If trigger is "go_deeper":
+
+              * The candidate gave a strong answer.
+              * Ask a follow-up that explores reasoning, decisions, challenges, alternatives considered, lessons learned, implementation details, debugging process, results, or practical experience.
+              * Build naturally on something the candidate already mentioned.
+              * Increase depth within the same topic rather than changing topics.
+              * Focus on realistic situations and practical experience.
+              * Match the complexity of the follow-up to the candidate's role, experience level, skills, and demonstrated knowledge.
+              * For experienced candidates, deeper questions may explore tradeoffs, design decisions, performance considerations, broader impacts, ownership, or leadership when relevant.
+              * For junior candidates, focus on project decisions, implementation choices, debugging, learning experiences, practical challenges, and problem-solving.
+
+            Context Awareness:
+
+            * Use the provided role, experience, mode, and skills as the primary source of context.
+            * Ask questions that a real interviewer would reasonably ask for that role and experience level.
+            * Do not assume expertise beyond the candidate's stated background, skills, or demonstrated answer.
+            * Deeper follow-ups should explore depth within the candidate's demonstrated scope rather than moving to a substantially more advanced level.
+            * Prefer questions directly related to the candidate's role, skills, projects, and previous answer.
+
+            Question Quality:
+
+            * Prefer practical and experience-based follow-ups over theoretical questions.
+            * Focus on what the candidate did, why they made decisions, what challenges they faced, and what they learned.
+            * Avoid generic textbook questions.
+            * Avoid repeating the original question in a slightly different form.
+            * The follow-up should feel like a natural continuation of a real interview conversation.
 
             Output Rules:
-            - Generate exactly ONE follow-up question.
-            - The question must be a single complete sentence.
-            - The question must contain between 10 and 25 words.
-            - Do NOT include any filler text, greetings, or explanations (e.g., do not say "Great answer," or "Let's dive deeper").
-            - Output the question text ONLY.
+
+            * Generate exactly ONE follow-up question.
+            * The question must be a single complete sentence.
+            * The question must contain between 10 and 25 words.
+            * Do NOT include greetings, praise, explanations, or filler text.
+            * Output only the question text.
         `
     }
 
