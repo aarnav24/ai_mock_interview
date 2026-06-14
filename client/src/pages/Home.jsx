@@ -219,12 +219,12 @@ const Home = () => {
                   {
                     image: techImg,
                     title: "Technical Mode",
-                    desc: "Deep technical questioning based on selected role."
+                    desc: "Deep technical questioning based on selected role"
                   },
                   {
                     image: confidenceImg,
-                    title: "Confidence Detection",
-                    desc: "Basic tone and voice analysis insights"
+                    title: "Follow-up questions",
+                    desc: "Intelligent real-time follow-up questions based on answers"
                   },
                   {
                     image: creditImg,

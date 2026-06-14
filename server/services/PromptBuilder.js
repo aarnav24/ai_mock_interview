@@ -44,7 +44,7 @@ export class PromptBuilder {
                     - Use the candidate's projects, skills, and resume details whenever relevant.
                     - Exactly 3 questions must directly reference the candidate's projects, internships, coursework, or experience. Do not place all project-based questions consecutively. Distribute them naturally throughout the interview.
                     - The remaining 2 questions (not necessarily in order) should test skills through practical scenarios, implementation decisions, tradeoffs, problem-solving discussions, or challenges directly related to the candidate's demonstrated skills and experience.Do not ask questions requiring expertise not evidenced in the candidate's resume.
-                    - Question 5 must require deeper reasoning, tradeoff analysis, debugging decisions, optimization strategies, scalability considerations, or architectural thinking and can be of upto 35 words.
+                    - Question 5 must require deeper reasoning, tradeoff analysis, debugging decisions, optimization strategies, scalability considerations, or architectural thinking and can be of upto 35 words. But keep in mind the experience, don't aske deep system design and scalabiliy questions to candidates with less experience.
                     - If resume is not provided, ask questions according to the role and experience of the user. For example, questions related to the top skills in demand for that job role
                     - Prefer questions about implementation choices, debugging experiences, optimization, scalability, tradeoffs, and lessons learned.
                     - Avoid generic textbook questions.

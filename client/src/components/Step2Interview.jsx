@@ -349,7 +349,6 @@ const Step2Interview = ({ interviewData, onFinish }) => {
                     console.error("[follow-up] error:", err)
                 }
             }
-
             await speakText(fb)
         } catch (error) {
             console.error("[submit] error:", error)
