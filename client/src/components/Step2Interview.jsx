@@ -63,6 +63,7 @@ const Step2Interview = ({ interviewData, onFinish }) => {
     const audioCtxRef = useRef(null)
     const analyserRef = useRef(null)
     const rafRef = useRef(null)
+    const hasFollowUpRef = useRef(false)
 
     const currentQuestion = questions[currentIndex]
 
@@ -186,6 +187,7 @@ const Step2Interview = ({ interviewData, onFinish }) => {
                 setIsIntroPhase(false)
             } else if (currentQuestion) {
                 setCanAnswer(false)
+                setTimeLeft(currentQuestion.timeLimit || 60)
                 await new Promise(r => setTimeout(r, 800))
                 if (currentIndex === questions.length - 1) {
                     await speakText("Alright, this one might be a bit more challenging")
@@ -209,9 +211,14 @@ const Step2Interview = ({ interviewData, onFinish }) => {
     }, [isIntroPhase, currentIndex, canAnswer, isPaused, currentQuestion])
 
     const startMic = useCallback(async () => {
-        if (!canAnswer || isAIPlaying || isSubmitting || feedback) return
+        if (isSubmitting || feedback || isIntroPhase) return
 
         try {
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel()
+                setIsAIPlaying(false)
+            }
+            setCanAnswer(true)
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
 
             // Audio volume analyser
@@ -238,6 +245,7 @@ const Step2Interview = ({ interviewData, onFinish }) => {
             wsRef.current = ws
 
             ws.onclose = () => flushPending()
+            ws.onerror = (err) => console.error("[websocket] client error:", err)
 
             ws.onmessage = (event) => {
                 try {
@@ -245,9 +253,10 @@ const Step2Interview = ({ interviewData, onFinish }) => {
                     if (msg.type !== "transcript" || !msg.transcript) return
                     if (msg.isFinal) {
                         setLiveTranscript("")
-                        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
-                        pendingTextRef.current += (pendingTextRef.current ? " " : "") + msg.transcript
-                        silenceTimerRef.current = setTimeout(() => { flushPending() }, 5000)
+                        setAnswer(prev => {
+                            const trimmed = prev.trim()
+                            return trimmed ? trimmed + " " + msg.transcript : msg.transcript
+                        })
                     } else {
                         // Show interim result immediately
                         setLiveTranscript(msg.transcript)
@@ -324,6 +333,7 @@ const Step2Interview = ({ interviewData, onFinish }) => {
             )
 
             const { feedback: fb, score, followUpTrigger } = result.data
+            hasFollowUpRef.current = !!followUpTrigger
             setFeedback(fb)
             
             // Disable ability to answer/interact while AI is speaking feedback
@@ -357,12 +367,6 @@ const Step2Interview = ({ interviewData, onFinish }) => {
                         setFeedback("")
                         setLastScore(null)
                         setCurrentIndex(prev => prev + 1)
-                        // Wait for state updates to settle, then play the new follow-up question
-                        setTimeout(async () => {
-                            await speakText(followUpQuestion.question)
-                            setCanAnswer(true)
-                            setTimeLeft(followUpQuestion.timeLimit)
-                        }, 100)
                         return // Skip standard next/report path because we just auto-advanced
                     }
                 } catch (err) {
@@ -393,6 +397,8 @@ const Step2Interview = ({ interviewData, onFinish }) => {
     const doFinishInterview = useCallback(async () => {
         stopMic()
         setIsMicOn(false)
+        window.speechSynthesis.cancel()
+        setIsAIPlaying(false)
         setIsFinishing(true)
         try {
             const result = await axios.post(`${ServerUrl}/api/interview/finish`, { interviewId }, { withCredentials: true })
@@ -407,6 +413,15 @@ const Step2Interview = ({ interviewData, onFinish }) => {
 
     const handleNext = async () => {
         if(isFetchingFollowUp) return
+        
+        if (isAIPlaying) {
+            window.speechSynthesis.cancel()
+            setIsAIPlaying(false)
+            if (hasFollowUpRef.current) {
+                return
+            }
+        }
+
         setCanAnswer(false)
         setAnswer("")
         setFeedback("")
@@ -418,9 +433,7 @@ const Step2Interview = ({ interviewData, onFinish }) => {
             return
         }
 
-        await speakText("Alright, let's move to the next question.")
         setCurrentIndex(prev => prev + 1)
-        setTimeLeft(questions[currentIndex + 1].timeLimit)
     }
 
     const handlePause = () => {
@@ -601,9 +614,16 @@ const Step2Interview = ({ interviewData, onFinish }) => {
 
                     <textarea
                         placeholder="Type or speak your answer here..."
-                        onChange={(e) => setAnswer(e.target.value)}
+                        onChange={(e) => {
+                            if (window.speechSynthesis) {
+                                window.speechSynthesis.cancel()
+                                setIsAIPlaying(false)
+                            }
+                            setCanAnswer(true)
+                            setAnswer(e.target.value)
+                        }}
                         value={answer}
-                        disabled={!canAnswer || !!feedback}
+                        disabled={isIntroPhase || isSubmitting || !!feedback}
                         className="min-h-72 flex-1 resize-none rounded-3xl border border-gray-200 bg-gray-50/80 p-4 text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100 disabled:opacity-60 sm:p-6"
                     />
 
@@ -622,7 +642,7 @@ const Step2Interview = ({ interviewData, onFinish }) => {
                             <motion.button
                                 whileTap={{ scale: 0.9 }}
                                 onClick={toggleMic}
-                                disabled={!canAnswer || isAIPlaying || isSubmitting}
+                                disabled={isIntroPhase || isSubmitting || !!feedback}
                                 className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full shadow-lg transition sm:h-14 sm:w-14
                                     ${isMicOn ? "bg-blue-600 text-white animate-pulse" : "bg-[#151815] text-white hover:bg-emerald-700"}
                                     disabled:opacity-40`}
@@ -669,7 +689,7 @@ const Step2Interview = ({ interviewData, onFinish }) => {
                             <p className="font-medium leading-7 text-emerald-800">{feedback}</p>
                             <button
                                 onClick={handleNext}
-                                disabled={!canAnswer || isSubmitting || isAIPlaying || isFetchingFollowUp}
+                                disabled={isSubmitting || isFetchingFollowUp}
                                 className="flex w-full items-center justify-center gap-2 rounded-full bg-[#151815] py-3 text-sm font-semibold text-white shadow-lg shadow-gray-900/15 transition hover:bg-emerald-700 disabled:opacity-50"
                             >
                                 {currentIndex === questions.length - 1 ? "View Report" : "Next Question"}

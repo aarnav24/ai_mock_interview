@@ -38,10 +38,12 @@ export const handleDeepgramWebSocket = (clientWs) => {
 
     dgWs.on("error", (err) => {
         console.error("[deepgram] Deepgram error:", err.message)
+        if (clientWs.readyState === WebSocket.OPEN) clientWs.close()
     })
 
     dgWs.on("close", (code) => {
         console.log("[deepgram] Deepgram closed", code)
+        if (clientWs.readyState === WebSocket.OPEN) clientWs.close()
     })
 
     clientWs.on("message", (data) => {

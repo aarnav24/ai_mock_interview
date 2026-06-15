@@ -339,7 +339,7 @@ export class InterviewService {
             topics.forEach(({ questionIndex: qi, topic }) => {
                 if (interview.questions[qi]) interview.questions[qi].topic = topic
             })
-        } catch {}
+        } catch { }
 
         let weakTopics = questions
             .filter(q => (q.score || 0) < 8)
@@ -454,7 +454,7 @@ export class InterviewService {
     }
 
     static #resolveFollowUpTrigger(scores) {
-        if (scores.finalScore >= 8) return null
+        if (scores.finalScore >= 7) return null
         if (scores.correctness < 5) return "probe_weakness"
         return "go_deeper"
     }

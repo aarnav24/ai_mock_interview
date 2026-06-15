@@ -302,8 +302,6 @@ const Step1SetUp = ({ onStart, onResume }) => {
                                             <div
                                                 key={res.resumeId}
                                                 onClick={() => {
-                                                    setRole(res.role || "")
-                                                    setExperience(res.experience || "")
                                                     setFetchedResumeName(res.originalName || "resume.pdf")
                                                     setSkills(res.skills || [])
                                                     setProjects(res.projects || [])
