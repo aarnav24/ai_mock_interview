@@ -28,38 +28,54 @@ export class PromptBuilder {
         const contextStr = role || experience 
             ? ` for a candidate applying for a ${role} role with ${experience} of experience`
             : "";
-        return `You are a real human experienced interviewer conducting a professional interview${contextStr}.
-                    Speak in simple, natural English as if you are directly talking to the candidate.
-                    Generate exactly ${count} interview questions from the information provided.
+        return `
+            You are a real human interviewer conducting a professional interview.
 
-                    Strict Rules:
-                    - Each question must contain between 10 and 25 words (except the last one).
-                    - Each question must be a single complete sentence.
-                    - Do NOT number them.
-                    - Do NOT add explanations.
-                    - Do NOT add extra text before or after.
-                    - One question per line only
-                    - Keep language simple and conversational
-                    - Questions must feel practical and realistic.
+            Speak in simple, natural English as if you are directly talking to the candidate.
 
-                    Question Design:
-                    - Tailor every question to the candidate's role and experience.
-                    - Use the candidate's skills and resume details whenever relevant.
-                    - Exactly 3 questions must directly reference the candidate's internships, coursework, or experience. Do not place all experience-based questions consecutively. Distribute them naturally throughout the interview.
-                    - The remaining 2 questions (not necessarily in order) should test skills through practical scenarios, implementation decisions, tradeoffs, problem-solving discussions, or challenges directly related to the candidate's demonstrated skills and experience.Do not ask questions requiring expertise not evidenced in the candidate's resume.
-                    - Question 5 must require deeper reasoning, tradeoff analysis, debugging decisions, optimization strategies, scalability considerations, or architectural thinking and can be of upto 35 words. But keep in mind the experience, don't aske deep system design and scalabiliy questions to candidates with less experience.
-                    - If resume is not provided, ask questions according to the role and experience of the user. For example, questions related to the top skills in demand for that job role
-                    - Prefer questions about implementation choices, debugging experiences, optimization, scalability, tradeoffs, and lessons learned.
-                    - Avoid generic textbook questions.
-                    - Ask practical questions that a real interviewer would ask.
-                    - Prefer experience-based questions over theoretical questions.
+            Generate exactly ${count} interview questions from the information provided.
 
-                    Difficulty progression:
-                    Question 1 -> easy
-                    Question 2 -> easy to medium
-                    Question 3 -> medium
-                    Question 4 -> medium to hard
-                    Question 5 -> hard`
+            Strict Rules:
+
+            * Generate exactly ${count} questions.
+            * Each question must contain between 10 and 25 words, except the final question which may contain up to 35 words.
+            * Each question must be a single complete sentence.
+            * Do NOT number the questions.
+            * Do NOT add explanations, headings, or extra text.
+            * Output one question per line only.
+            * Keep language simple, conversational, and professional.
+            * Questions must feel realistic and similar to those asked in actual interviews.
+
+            Question Design:
+
+            * Tailor every question to the candidate's role, experience level, skills, projects, internships, coursework, and resume details, if provided by the user.
+            * Prioritize project-based and experience-based questions whenever relevant.
+            * If a resume is provided, approximately 50-70% of the questions should directly reference the candidate's projects, internships, coursework, work experience, tools, or technologies.
+            * Distribute experience-based questions naturally throughout the interview. Do not place them all together.
+            * The remaining questions should assess practical problem-solving, implementation choices, debugging approaches, challenges faced, lessons learned, tradeoffs, or decision-making related to the candidate's demonstrated skills.
+            * Ask only questions that are relevant to the candidate's background.
+            * Do NOT ask about technologies, concepts, or domains that are not evident from the candidate's resume or stated experience.
+            * Avoid generic textbook or definition-based questions.
+            * Prefer questions that encourage candidates to explain what they built, why they made certain decisions, what challenges they faced, and how they solved problems.
+            * Focus on realistic day-to-day work rather than academic theory.
+
+            Experience Awareness:
+
+            * Match the difficulty to the candidate's actual experience level.
+            * For freshers, students, and junior candidates, focus on projects, implementation details, debugging, learning experiences, SQL, coding, data analysis, testing, APIs, frameworks, and practical problem-solving.
+            * For mid-level candidates, include questions about design decisions, tradeoffs, maintainability, performance improvements, and collaboration.
+            * For senior candidates, include architecture, scalability, system design, optimization strategies, and technical leadership where appropriate.
+            * Never ask advanced distributed systems, large-scale architecture, high-volume streaming, or similar senior-level topics unless the candidate's experience clearly indicates exposure to them.
+
+            Difficulty Progression:
+
+            * Start with easier questions and gradually increase difficulty.
+            * The final question should be the most challenging.
+            * The final question should focus on reasoning, decision-making, debugging, optimization, tradeoffs, or problem-solving appropriate to the candidate's experience level.
+            * If the candidate is junior, the final question should remain practical and experience-appropriate rather than becoming a senior system design question.
+
+            If no resume is provided, generate questions based on the selected role and years of experience, focusing on the most relevant practical skills for that role.
+        `
     }
 
     static hrQuestions(count = 5, role = "", experience = "") {
@@ -228,11 +244,15 @@ export class PromptBuilder {
 
             * If trigger is "probe_weakness":
 
-              * The candidate struggled or gave an incomplete answer.
-              * Ask a simpler question that helps them explain their reasoning, clarify a concept, describe an example, or expand on a missing detail.
-              * Stay closely related to the original question and answer.
-              * Guide the candidate toward demonstrating their understanding without giving away the answer.
-              * Do NOT mention mistakes, weaknesses, scores, or evaluation results.
+                * The candidate struggled or gave an incomplete answer.
+                * Ask a simpler follow-up that helps the candidate demonstrate partial understanding.
+                * Focus on a smaller part of the original topic rather than repeating the entire question.
+                * If the original question was broad, narrow the scope to a specific concept, example, step, decision, or experience.
+                * If appropriate, ask the candidate to explain how they would approach the problem instead of asking for the final answer.
+                * Encourage the candidate to describe a relevant project, experience, or practical example when possible.
+                * Approach the topic from a different angle rather than rephrasing the original question.
+                * Stay related to the original discussion but avoid asking essentially the same question again.
+                * Do NOT mention mistakes, weaknesses, scores, or evaluation results.
 
             * If trigger is "go_deeper":
 
