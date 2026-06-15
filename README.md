@@ -6,18 +6,17 @@ An advanced, full-stack AI-powered mock interview platform designed to help user
 
 ## 🚀 Key Features
 
-- 🎙️ **Interactive AI Interviewer**: Live voice interaction powered by Deepgram via WebSocket connection.
-- 📻 **Real-time Live Audio Streaming**: Optional high-fidelity live transcription capabilities via integrated Deepgram WebSocket connections.
+- 🎙️ **Real-time Live Audio Streaming**: Optional high-fidelity live transcription capabilities via integrated Deepgram WebSocket connections.
 - 📄 **Dual-DB Resume Archiver**: Upload PDF resumes to extract role, experience level, key projects, and skills. Resumes are stored in a compressed format in a dedicated database (`RESUME_MONGODB_URL`), separate from user metadata.
 - ⚙️ **Custom Interview Setup**: Choose between **Technical** and **HR** modes with a structured difficulty progression (Easy → Medium → Hard) and custom question-selection algorithms.
 - 🔄 **Drafts & Resume-Session Support**: Safely stores interview state to allow candidates to resume incomplete interviews at any time, backed by `draftStorage` utilities.
-- 🤖 **Context-Aware Questioning**: AI dynamically tailors questions based on the candidate's resume, specific projects, and selected focus area.
+- 🤖 **Context-Aware Follow-up Questioning**: AI dynamically tailors questions based on the candidate's resume, specific projects, and selected focus area to ask real-time follow-up questions.
 - 📊 **Detailed Evaluation & Scoring**: Each answer is evaluated by a 120-billion parameter LLM across three core pillars:
   - *Confidence & Clarity*
   - *Communication*
   - *Correctness & Completeness*
 - 📈 **Performance Analytics**: Visualized performance graphs (scores per question, skill breakdown charts) showing the average scores of all answers in that session, along with persistent, shareable report links.
-- 💳 **Credit-Based System**: Integrated credit validation (e.g., 50 credits per interview session) to manage API resources.
+- 💳 **Credit-Based System**: Integrated credit validation (e.g., 10 credits per interview session) to manage API resources.
 - 💳 **Payment Integration**: Buy credit packages seamlessly with integrated Razorpay order generation and cryptographic payment signature verification.
 - 🖨️ **Sanitized PDF Report Export**: Professional PDF report generation using `jsPDF` that automatically sanitizes smart quotes and em-dashes to avoid font encoding errors. The resulting PDF filename is custom-tailored using the candidate's name and target role (e.g., `IntervuAI_Report_CandidateName_Role.pdf`).
 - 📁 **Modular UI Structure**: Uses custom Tailwind-based component architecture structured under `/components/ui/` with path aliasing (`@/`).
@@ -228,13 +227,11 @@ Below is a summary of the available API namespaces:
 * `POST /api/interview/generate-questions` - Creates N customized questions (combining difficulty level with resume projects), constructs an `Interview` entry, and deducts credits (10 credits per question).
 * `POST /api/interview/submit-answer` - Grades the current response graded across 3 dimensions (0-10 scale), logs history, and gives 10-15 word feedback.
 * `POST /api/interview/follow-up` - Dynamically generates follow-up context in response to weak answers.
-* `POST /api/interview/share/:id` - Creates/registers a public share key for an interview session report.
 * `POST /api/interview/finish` - Signals completion, generates a session summary, classifies topics, compiles weak categories into an improvement plan, and returns final scores.
 * `GET /api/interview/get-interviews` - Lists historical user interviews.
 * `GET /api/interview/progress` - Loads the latest draft of incomplete sessions.
 * `GET /api/interview/resume/:id` - Restores and resumes an incomplete interview from the draft state.
 * `GET /api/interview/report/:id` - Fetches the complete private report.
-* `GET /api/interview/public/:id` - Fetches report details for public viewing (bypasses auth gate).
 
 ### Payment Operations (`/api/payment`)
 * `POST /api/payment/order` - Generates a Razorpay payment order for purchasing credit plans.
