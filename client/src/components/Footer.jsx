@@ -59,7 +59,7 @@ const Footer = () => {
                 <RiRobot3Fill size={21} />
               </span>
               <span>
-                <span className="block text-left font-semibold">Intervio</span>
+                <span className="block text-left font-semibold">IntervuAI</span>
                 <span className="block text-[10px] uppercase tracking-[0.16em] text-gray-500">Interview coach</span>
               </span>
             </button>

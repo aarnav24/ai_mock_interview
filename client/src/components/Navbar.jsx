@@ -60,7 +60,7 @@ const Navbar = () => {
             <RiRobot3Fill size={21} />
           </span>
           <span className="hidden text-left sm:block">
-            <span className="block text-[15px] font-bold leading-snug tracking-wide">Intervio</span>
+            <span className="block text-[15px] font-bold leading-snug tracking-wide">IntervuAI</span>
             <span className="mt-1 block text-[10px] font-medium uppercase tracking-[0.16em] text-gray-400">Mock Interviewer</span>
           </span>
         </button>
