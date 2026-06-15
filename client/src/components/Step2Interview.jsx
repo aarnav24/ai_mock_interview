@@ -53,6 +53,7 @@ const Step2Interview = ({ interviewData, onFinish }) => {
     const [liveTranscript, setLiveTranscript] = useState("")
     const [tabSwitchToast, setTabSwitchToast] = useState(false)
     const [isFetchingFollowUp, setIsFetchingFollowup] = useState(false)
+    const [isFullscreen, setIsFullscreen] = useState(true)
 
     const videoRef = useRef(null)
     const mediaRecorderRef = useRef(null)
@@ -309,20 +310,37 @@ const Step2Interview = ({ interviewData, onFinish }) => {
         }
     }, [stopMic])
 
-    // Fullscreen + tab-switch guard
+    // Fullscreen + tab-switch + window-blur guard
     useEffect(() => {
-        document.documentElement.requestFullscreen().catch(() => {})
+        document.documentElement.requestFullscreen()
+            .then(() => setIsFullscreen(true))
+            .catch(() => setIsFullscreen(false))
+
+        const triggerWarning = () => {
+            setTabSwitchToast(true)
+            setTimeout(() => setTabSwitchToast(false), 3500)
+        }
 
         const handleVisibilityChange = () => {
-            if (document.hidden) {
-                setTabSwitchToast(true)
-                setTimeout(() => setTabSwitchToast(false), 3500)
-            }
+            if (document.hidden) triggerWarning()
+        }
+
+        const handleBlur = () => {
+            triggerWarning()
+        }
+
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement)
         }
 
         document.addEventListener("visibilitychange", handleVisibilityChange)
+        window.addEventListener("blur", handleBlur)
+        document.addEventListener("fullscreenchange", handleFullscreenChange)
+
         return () => {
             document.removeEventListener("visibilitychange", handleVisibilityChange)
+            window.removeEventListener("blur", handleBlur)
+            document.removeEventListener("fullscreenchange", handleFullscreenChange)
             if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
         }
     }, [])
@@ -466,7 +484,29 @@ const Step2Interview = ({ interviewData, onFinish }) => {
             {/* Tab switch warning toast */}
             {tabSwitchToast && (
                 <div className="fixed left-1/2 top-5 z-60 -translate-x-1/2 rounded-full bg-red-600 px-6 py-3 text-sm font-semibold text-white shadow-2xl shadow-red-900/20 animate-bounce">
-                    ⚠️ Tab switching is not allowed during the interview
+                    ⚠️ Tab or window switching is not allowed during the interview
+                </div>
+            )}
+
+            {/* Fullscreen requirement overlay */}
+            {!isFullscreen && (
+                <div className="fixed inset-0 z-70 flex flex-col items-center justify-center gap-6 bg-[#151815]/95 p-6 backdrop-blur-md text-white">
+                    <div className="text-5xl">📺</div>
+                    <div className="text-center">
+                        <h2 className="text-2xl font-semibold tracking-tight">Fullscreen Mode Required</h2>
+                        <p className="mt-2 max-w-xs text-sm text-gray-400">
+                            To maintain the integrity of the interview, you must remain in fullscreen mode.
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => {
+                            document.documentElement.requestFullscreen()
+                                .then(() => setIsFullscreen(true))
+                                .catch(() => {})
+                        }}
+                        className="rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-950/20 transition hover:bg-emerald-600">
+                        Enable Fullscreen
+                    </button>
                 </div>
             )}
 
