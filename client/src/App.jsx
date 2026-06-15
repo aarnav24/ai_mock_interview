@@ -11,6 +11,7 @@ import InterviewPage from "./pages/InterviewPage.jsx"
 import InterviewHistory from "./pages/InterviewHistory.jsx"
 import Pricing from "./pages/Pricing.jsx"
 import InterviewReport from "./pages/InterviewReport.jsx"
+import NotFound from "./pages/NotFound.jsx"
 
 export const ServerUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:8000"
 
@@ -58,6 +59,7 @@ const App = () => {
                             <ProtectedRoute><InterviewReport /></ProtectedRoute>
                         } />
                         <Route path="/public/report/:id" element={<InterviewReport isPublic />} />
+                        <Route path="*" element={<NotFound />} />
                     </Routes>
                 </div>
             </div>
