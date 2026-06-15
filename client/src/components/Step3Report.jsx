@@ -60,10 +60,21 @@ const Step3Report = ({ report }) => {
 
     const questionScoreData = questionWiseScore.map((q, i) => ({ name: `Q${i + 1}`, score: q.score || 0 }))
 
+    // Compute dynamic averages of all questions in the session as a fallback
+    const answeredQuestions = questionWiseScore.filter(q => q.answer && q.answer.trim().length > 0)
+    const divisor = answeredQuestions.length || questionWiseScore.length || 1
+    const avgConfidence = Number((questionWiseScore.reduce((sum, q) => sum + (q.confidence || 0), 0) / divisor).toFixed(1))
+    const avgCommunication = Number((questionWiseScore.reduce((sum, q) => sum + (q.communication || 0), 0) / divisor).toFixed(1))
+    const avgCorrectness = Number((questionWiseScore.reduce((sum, q) => sum + (q.correctness || 0), 0) / divisor).toFixed(1))
+
+    const displayConfidence = confidence || avgConfidence
+    const displayCommunication = communication || avgCommunication
+    const displayCorrectness = correctness || avgCorrectness
+
     const skills = [
-        { label: "Confidence & Clarity", value: confidence },
-        { label: "Communication", value: communication },
-        { label: "Correctness & Completeness", value: correctness }
+        { label: "Confidence & Clarity", value: displayConfidence },
+        { label: "Communication", value: displayCommunication },
+        { label: "Correctness & Completeness", value: displayCorrectness }
     ]
 
     const performanceText = finalScore >= 8
@@ -127,9 +138,9 @@ const Step3Report = ({ report }) => {
 
         section("Score Summary")
         const scoreRows = [
-            ["Confidence & Clarity", `${confidence}/10`],
-            ["Communication", `${communication}/10`],
-            ["Correctness & Completeness", `${correctness}/10`],
+            ["Confidence & Clarity", `${displayConfidence}/10`],
+            ["Communication", `${displayCommunication}/10`],
+            ["Correctness & Completeness", `${displayCorrectness}/10`],
             ["Overall Final Score", `${finalScore}/10`]
         ]
         scoreRows.forEach(([label, val]) => {
