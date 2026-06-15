@@ -1,4 +1,4 @@
-# AI Mock Interview — Full-Stack AI-Powered Interview Prep Platform
+# IntervuAI — Full-Stack AI-Powered Interview Prep Platform
 
 An advanced, full-stack AI-powered mock interview platform designed to help users prepare for technical and HR interviews. The platform provides an interactive experience where an AI interviewer speaks questions, listens to voice answers, evaluates responses across multiple dimensions, and generates detailed, downloadable performance reports.
 
@@ -6,7 +6,7 @@ An advanced, full-stack AI-powered mock interview platform designed to help user
 
 ## 🚀 Key Features
 
-- 🎙️ **Interactive AI Interviewer**: Live voice interaction powered by Deepgram via Wobsocket connection.
+- 🎙️ **Interactive AI Interviewer**: Live voice interaction powered by Deepgram via WebSocket connection.
 - 📻 **Real-time Live Audio Streaming**: Optional high-fidelity live transcription capabilities via integrated Deepgram WebSocket connections.
 - 📄 **Dual-DB Resume Archiver**: Upload PDF resumes to extract role, experience level, key projects, and skills. Resumes are stored in a compressed format in a dedicated database (`RESUME_MONGODB_URL`), separate from user metadata.
 - ⚙️ **Custom Interview Setup**: Choose between **Technical** and **HR** modes with a structured difficulty progression (Easy → Medium → Hard) and custom question-selection algorithms.
@@ -16,17 +16,18 @@ An advanced, full-stack AI-powered mock interview platform designed to help user
   - *Confidence & Clarity*
   - *Communication*
   - *Correctness & Completeness*
-- 📈 **Performance Analytics**: Visualized performance graphs (scores per question, skill breakdown charts) and persistent, shareable report links.
+- 📈 **Performance Analytics**: Visualized performance graphs (scores per question, skill breakdown charts) showing the average scores of all answers in that session, along with persistent, shareable report links.
 - 💳 **Credit-Based System**: Integrated credit validation (e.g., 50 credits per interview session) to manage API resources.
 - 💳 **Payment Integration**: Buy credit packages seamlessly with integrated Razorpay order generation and cryptographic payment signature verification.
-- 🖨️ **PDF Report Export**: Professional PDF report generation using `jsPDF` for offline viewing.
+- 🖨️ **Sanitized PDF Report Export**: Professional PDF report generation using `jsPDF` that automatically sanitizes smart quotes and em-dashes to avoid font encoding errors. The resulting PDF filename is custom-tailored using the candidate's name and target role (e.g., `IntervuAI_Report_CandidateName_Role.pdf`).
+- 📁 **Modular UI Structure**: Uses custom Tailwind-based component architecture structured under `/components/ui/` with path aliasing (`@/`).
 
 ---
 
 ## 🛠️ Tech Stack
 
 ### Frontend (`client/`)
-* **Framework**: React 19, Vite 8, React Router DOM v7
+* **Framework**: React 19, Vite 6, React Router DOM v7
 * **State Management**: Redux Toolkit, React Redux
 * **Styling & Animation**: Tailwind CSS v4, Motion (Framer Motion)
 * **Authentication**: Firebase Client SDK (Google OAuth)
@@ -35,6 +36,7 @@ An advanced, full-stack AI-powered mock interview platform designed to help user
 * **Visualization**: Recharts, react-circular-progressbar
 * **PDF Export**: jsPDF + jspdf-autotable
 * **Icons**: React Icons
+* **UI Primitives**: Radix UI Slot, Class Variance Authority (CVA), Clsx, Tailwind Merge
 
 ### Backend (`server/`)
 * **Runtime**: Node.js (ESM modules)
@@ -67,8 +69,10 @@ ai_mock_interview/
 ├── client/                 # React frontend application
 │   ├── src/
 │   │   ├── assets/         # Audio, video, and image assets
-│   │   ├── components/     # UI Components (Step1SetUp, Step2Interview, Step3Report, ErrorBoundary, ProtectedRoute, Navbar, Footer, etc.)
-│   │   ├── pages/          # Page views (Home, Auth, InterviewPage, InterviewHistory, Pricing, InterviewReport)
+│   │   ├── components/     # UI Components (Step1SetUp, Step2Interview, Step3Report, ErrorBoundary, ProtectedRoute, Navbar, Footer)
+│   │   │   └── ui/         # Base UI components (button, 404-page-not-found)
+│   │   ├── lib/            # Shared libraries and helper utilities (utils.js defining cn helper)
+│   │   ├── pages/          # Page views (Home, Auth, InterviewPage, InterviewHistory, Pricing, InterviewReport, NotFound)
 │   │   ├── redux/          # Redux Toolkit store (store.js, userSlice.js)
 │   │   └── utils/          # Helper utilities (firebase.js, draftStorage.js)
 │   └── package.json
@@ -164,9 +168,9 @@ sequenceDiagram
 
     User->>FE: 1. Input parameters & Upload Resume PDF
     FE->>BE: POST /api/interview/resume (Multer)
-    BE->>AI: Extract Role/Experience/Projects from PDF
+    BE->>AI: Extract Role/Experience/Projects/Skills from PDF
     AI-->>BE: Extracted Profile JSON
-    BE-->>FE: Populate fields in Setup Screen
+    BE-->>FE: Populate fields & projects list in Setup Screen
     User->>FE: Click "Start Interview"
     FE->>BE: POST /api/interview/generate-questions (deducts 10 credits per question, e.g., 50 credits for 5 questions)
     BE->>AI: Generate N custom questions (Technical/HR)
@@ -195,8 +199,8 @@ sequenceDiagram
     end
     FE->>BE: POST /api/interview/finish
     BE-->>FE: Aggregated Final Report JSON
-    FE->>User: Display Step 3 (Report Screen with Charts)
-    User->>FE: Download Report as PDF
+    FE->>User: Display Step 3 (Report Screen with Charts & Dynamic Averages)
+    User->>FE: Download Sanitized Report as PDF (Name & Role in Filename)
 ```
 
 ### Credit System Logic
@@ -218,7 +222,7 @@ sequenceDiagram
 ### Interview Management (`/api/interview`)
 * `POST /api/interview/resume` - Accepts a resume PDF via Multer, saves a compressed version to the resume database, extracts textual data using `pdfjs-dist`, and structures details via AI.
 * `POST /api/interview/generate-questions` - Creates N customized questions (combining difficulty level with resume projects), constructs an `Interview` entry, and deducts credits (10 credits per question).
-* `POST /api/interview/submit-answer` - Grades the current response across 3 dimensions (0-10 scale), logs history, and gives 10-15 word feedback.
+* `POST /api/interview/submit-answer` - Grades the current response graded across 3 dimensions (0-10 scale), logs history, and gives 10-15 word feedback.
 * `POST /api/interview/follow-up` - Dynamically generates follow-up context in response to weak answers.
 * `POST /api/interview/share/:id` - Creates/registers a public share key for an interview session report.
 * `POST /api/interview/finish` - Signals completion, generates a session summary, classifies topics, compiles weak categories into an improvement plan, and returns final scores.
@@ -234,6 +238,10 @@ sequenceDiagram
 
 ### WebSockets (`/api/deepgram/live`)
 * `WS /api/deepgram/live` - Proxies raw microphone input to Deepgram live API, returning real-time transcription data.
+
+### Routing Fallbacks
+* **Frontend Wildcard Routing**: Any unmatched client path (`*`) is routed to the new custom `NotFound` page using React Router.
+* **Backend API Fallback**: Any unmatched API endpoint returns a standard JSON error response (`{ message: "API endpoint not found" }` with a 404 status code).
 
 ---
 
