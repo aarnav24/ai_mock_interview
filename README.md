@@ -212,9 +212,13 @@ sequenceDiagram
 
 ## 🛠️ API Documentation
 
+Interactive Swagger (OpenAPI 3.0) documentation is served directly from the server. You can view, test, and interact with the API endpoints by navigating to:
+* **Local Development**: `http://localhost:8000/api-docs`
+Below is a summary of the available API namespaces:
+
 ### Authentication (`/api/auth`)
 * `POST /api/auth/google` - Verifies Firebase ID Token, logs in/creates the user, and signs/issues JWT in an HTTP-only cookie.
-* `GET /api/auth/logOut` - Clears the authentication JWT token cookie.
+* `GET /api/auth/logout` - Clears the session cookie.
 
 ### User Configuration (`/api/user`)
 * `GET /api/user/current-user` - Returns the authenticated user's profile and credits.

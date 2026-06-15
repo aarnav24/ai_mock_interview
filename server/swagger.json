@@ -9,10 +9,6 @@
     {
       "url": "http://localhost:8000",
       "description": "Local Development Server"
-    },
-    {
-      "url": "https://ai-mock-interview-jft7.onrender.com",
-      "description": "Production Render Server"
     }
   ],
   "components": {
