@@ -99,12 +99,23 @@ const Step3Report = ({ report }) => {
 
         const TNR = "helvetica"
 
+        // Helper to replace unicode characters that standard helvetica doesn't support
+        const cleanText = (str) => {
+            if (typeof str !== "string") return str || ""
+            return str
+                .replace(/[\u2018\u2019]/g, "'") // Smart single quotes
+                .replace(/[\u201C\u201D]/g, '"') // Smart double quotes
+                .replace(/[\u2013\u2014]/g, "-") // Em/En dashes
+                .replace(/[\u2022]/g, "*")       // Bullet points
+                .replace(/[^\x00-\x7F]/g, "")    // Remove other non-ASCII chars
+        }
+
         const section = (title) => {
             if (y > pageHeight - 40) { doc.addPage(); y = margin }
             doc.setFont(TNR, "bold")
             doc.setFontSize(11)
             doc.setTextColor(30, 30, 30)
-            doc.text(title, margin, y)
+            doc.text(cleanText(title), margin, y)
             y += 2
             doc.setDrawColor(180)
             doc.line(margin, y, pageWidth - margin, y)
@@ -122,9 +133,9 @@ const Step3Report = ({ report }) => {
         doc.setFontSize(9)
         doc.setTextColor(80, 80, 80)
         const details = []
-        if (candidateName) details.push(`Candidate: ${candidateName}`)
-        if (role) details.push(`Role: ${role}`)
-        if (experience) details.push(`Experience: ${experience}`)
+        if (candidateName) details.push(`Candidate: ${cleanText(candidateName)}`)
+        if (role) details.push(`Role: ${cleanText(role)}`)
+        if (experience) details.push(`Experience: ${cleanText(experience)}`)
         if (details.length > 0) {
             doc.text(details.join("   |   "), pageWidth / 2, y, { align: "center" })
             y += 6
@@ -147,7 +158,7 @@ const Step3Report = ({ report }) => {
             doc.setFont(TNR, "normal")
             doc.setFontSize(10)
             doc.setTextColor(30, 30, 30)
-            doc.text(label, margin + 4, y)
+            doc.text(cleanText(label), margin + 4, y)
             doc.setFont(TNR, "bold")
             doc.text(val, margin + cw - 4, y, { align: "right" })
             y += 6
@@ -159,7 +170,7 @@ const Step3Report = ({ report }) => {
             doc.setFont(TNR, "normal")
             doc.setFontSize(10)
             doc.setTextColor(30, 30, 30)
-            const cleanSummary = summary.replace(/\r/g, "").replace(/\n/g, " ").replace(/\s+/g, " ").trim()
+            const cleanSummary = cleanText(summary.replace(/\r/g, "").replace(/\n/g, " ").replace(/\s+/g, " ").trim())
             const lines = doc.splitTextToSize(cleanSummary, cw)
             lines.forEach(line => {
                 if (y > pageHeight - 20) { doc.addPage(); y = margin }
@@ -173,7 +184,7 @@ const Step3Report = ({ report }) => {
         doc.setFont(TNR, "normal")
         doc.setFontSize(10)
         doc.setTextColor(30, 30, 30)
-        const cleanAdvice = advice.replace(/\r/g, "").replace(/\n/g, " ").replace(/\s+/g, " ").trim()
+        const cleanAdvice = cleanText(advice.replace(/\r/g, "").replace(/\n/g, " ").replace(/\s+/g, " ").trim())
         const adviceLines = doc.splitTextToSize(cleanAdvice, cw)
         adviceLines.forEach(line => {
             if (y > pageHeight - 20) { doc.addPage(); y = margin }
@@ -188,10 +199,10 @@ const Step3Report = ({ report }) => {
                 if (y > pageHeight - 30) { doc.addPage(); y = margin }
                 doc.setFont(TNR, "bold")
                 doc.setFontSize(10)
-                doc.text(`- ${item.topic}`, margin + 2, y)
+                doc.text(`- ${cleanText(item.topic)}`, margin + 2, y)
                 y += 5
                 item.suggestions?.forEach(s => {
-                    const cleanS = s.replace(/\r/g, "").replace(/\n/g, " ").replace(/\s+/g, " ").trim()
+                    const cleanS = cleanText(s.replace(/\r/g, "").replace(/\n/g, " ").replace(/\s+/g, " ").trim())
                     const sLines = doc.splitTextToSize(`  - ${cleanS}`, cw - 8)
                     sLines.forEach(sl => {
                         if (y > pageHeight - 20) { doc.addPage(); y = margin }
@@ -216,10 +227,10 @@ const Step3Report = ({ report }) => {
             head: [["#", "Question", "Your Answer", "Score", "AI Feedback"]],
             body: questionWiseScore.map((q, i) => [
                 `${i + 1}${q.isFollowUp ? " follow-up" : ""}`,
-                q.question || "",
-                q.answer?.slice(0, 200) || "-",
+                cleanText(q.question || ""),
+                cleanText(q.answer?.slice(0, 200) || "-"),
                 `${q.score || 0}/10`,
-                q.feedback || "No feedback"
+                cleanText(q.feedback || "No feedback")
             ]),
             styles: { font: TNR, fontSize: 8, cellPadding: 3, valign: "top", textColor: [20, 20, 20] },
             headStyles: { font: TNR, fontStyle: "bold", fillColor: [20, 20, 20], textColor: 255, fontSize: 8 },
@@ -233,7 +244,9 @@ const Step3Report = ({ report }) => {
             alternateRowStyles: { fillColor: [248, 248, 248] }
         })
 
-        doc.save("AI_Interview_Report.pdf")
+        const formattedName = (candidateName || "User").replace(/[^a-zA-Z0-9]/g, "_")
+        const formattedRole = (role || "Interview").replace(/[^a-zA-Z0-9]/g, "_")
+        doc.save(`IntervuAI_Report_${formattedName}_${formattedRole}.pdf`)
     }
 
     return (
