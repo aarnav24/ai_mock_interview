@@ -6,19 +6,16 @@ An advanced, full-stack AI-powered mock interview platform designed to help user
 
 ## 🚀 Key Features
 
-- 🎙️ **Interactive AI Interviewer**: Live voice interaction powered by Deepgram via WebSocket connection.
-- 📻 **Real-time Live Audio Streaming**: Optional high-fidelity live transcription capabilities via integrated Deepgram WebSocket connections.
-- 📄 **Dual-DB Resume Archiver**: Upload PDF resumes to extract role, experience level, key projects, and skills. Resumes are stored in a compressed format in a dedicated database (`RESUME_MONGODB_URL`), separate from user metadata.
+- 🎙️ **Interactive AI Interviewer**: Live voice interaction using Web Speech API (TTS) and Webkit Speech Recognition (STT).
+- 📄 **Resume Parsing**: Upload PDF resumes to extract role, experience level, key projects, and skills via AI.
 - ⚙️ **Custom Interview Setup**: Choose between **Technical** and **HR** modes with a structured difficulty progression (Easy → Medium → Hard) and custom question-selection algorithms.
-- 🔄 **Drafts & Resume-Session Support**: Safely stores interview state to allow candidates to resume incomplete interviews at any time, backed by `draftStorage` utilities.
 - 🤖 **Context-Aware Questioning**: AI dynamically tailors questions based on the candidate's resume, specific projects, and selected focus area.
 - 📊 **Detailed Evaluation & Scoring**: Each answer is evaluated by a 120-billion parameter LLM across three core pillars:
   - *Confidence & Clarity*
   - *Communication*
   - *Correctness & Completeness*
-- 📈 **Performance Analytics**: Visualized performance graphs (scores per question, skill breakdown charts) showing the average scores of all answers in that session, along with persistent, shareable report links.
+- 📈 **Performance Analytics**: Visualized performance graphs (scores per question, skill breakdown charts) showing the average scores of all answers in that session, along with persistent report links.
 - 💳 **Credit-Based System**: Integrated credit validation (e.g., 50 credits per interview session) to manage API resources.
-- 💳 **Payment Integration**: Buy credit packages seamlessly with integrated Razorpay order generation and cryptographic payment signature verification.
 - 🖨️ **Sanitized PDF Report Export**: Professional PDF report generation using `jsPDF` that automatically sanitizes smart quotes and em-dashes to avoid font encoding errors. The resulting PDF filename is custom-tailored using the candidate's name and target role (e.g., `IntervuAI_Report_CandidateName_Role.pdf`).
 - 📁 **Modular UI Structure**: Uses custom Tailwind-based component architecture structured under `/components/ui/` with path aliasing (`@/`).
 
@@ -32,7 +29,6 @@ An advanced, full-stack AI-powered mock interview platform designed to help user
 * **Styling & Animation**: Tailwind CSS v4, Motion (Framer Motion)
 * **Authentication**: Firebase Client SDK (Google OAuth)
 * **HTTP Client**: Axios (configured with cookies/credentials)
-* **Local State / Draft Storage**: Custom windowed session storage helpers for resuming active interviews
 * **Visualization**: Recharts, react-circular-progressbar
 * **PDF Export**: jsPDF + jspdf-autotable
 * **Icons**: React Icons
@@ -40,12 +36,10 @@ An advanced, full-stack AI-powered mock interview platform designed to help user
 
 ### Backend (`server/`)
 * **Runtime**: Node.js (ESM modules)
-* **Framework**: Express 5 (supporting WebSocket integration via `express-ws`)
-* **Database**: MongoDB (via Mongoose 9) with dual connection streams (App database & Resume blob database)
-* **Authentication & Credentials**: JSON Web Token (JWT) with HTTP-only cookies verified against Firebase Admin SDK
-* **AI Service**: OpenRouter API (`openai/gpt-oss-120b:free` model) with modular Prompts Builder
-* **Audio Processing**: Deepgram SDK integration via WebSockets (`wss://api.deepgram.com`)
-* **Payment Processor**: Razorpay SDK
+* **Framework**: Express 5
+* **Database**: MongoDB (via Mongoose 9)
+* **Authentication & Credentials**: JSON Web Token (JWT) with HTTP-only cookies
+* **AI Service**: OpenRouter API (`openai/gpt-oss-120b:free` model)
 * **PDF Parser**: `pdfjs-dist` (legacy build for extracting text from resume uploads)
 * **File Upload**: Multer
 
@@ -55,12 +49,9 @@ An advanced, full-stack AI-powered mock interview platform designed to help user
 
 ```mermaid
 graph TD
-    Client[React Frontend <br> localhost:5173] <-->|REST API / WebSockets <br> Axios + Cookies/JWT| Server[Express Backend <br> localhost:8000]
-    Server <-->|Mongoose Connections| MongoMainDB[(App MongoDB)]
-    Server <-->|Mongoose Connections| MongoResumeDB[(Resume MongoDB)]
+    Client[React Frontend <br> localhost:5173] <-->|REST API <br> Axios + Cookies/JWT| Server[Express Backend <br> localhost:8000]
+    Server <-->|Mongoose| MongoDB[(MongoDB Atlas)]
     Server <-->|Completions API| OpenRouter[OpenRouter AI Service <br> openai/gpt-oss-120b:free]
-    Server <-->|WebSocket Stream| Deepgram[Deepgram Speech-to-Text]
-    Server <-->|Payments API| Razorpay[Razorpay Gateway]
 ```
 
 ### Monorepo Structure
@@ -77,12 +68,12 @@ ai_mock_interview/
 │   │   └── utils/          # Helper utilities (firebase.js, draftStorage.js)
 │   └── package.json
 └── server/                 # Express backend application
-    ├── config/             # DB & Admin setup (connectDB.js, resumeDB.js, token.js, firebaseAdmin.js)
-    ├── controllers/        # Route logic (auth, user, interview, payment, deepgram)
+    ├── config/             # DB setup (connectDB.js, token.js)
+    ├── controllers/        # Route logic (auth, user, interview)
     ├── middlewares/        # Express middlewares (auth, multer)
-    ├── models/             # Mongoose schemas (User, Interview, Resume, Payment)
-    ├── routes/             # Router mappings (auth, user, interview, payment, deepgram)
-    ├── services/           # Service layer wrappers (AIService.js, AuthService.js, InterviewService.js, PromptBuilder.js, razorpay.service.js)
+    ├── models/             # Mongoose schemas (User, Interview)
+    ├── routes/             # Router mappings (auth, user, interview)
+    ├── services/           # Service layer wrappers (openRouter.service.js)
     ├── index.js            # App entry point with express-ws initialization
     └── package.json
 ```
@@ -101,22 +92,8 @@ Create a `.env` file containing the following variables:
 ```env
 PORT=8000
 MONGODB_URL=your_mongodb_connection_string
-RESUME_MONGODB_URL=your_resume_specific_mongodb_connection_string
 JWT_SECRET=your_jwt_secret_key
 OPENROUTER_API_KEY=your_openrouter_api_key
-CLIENT_URL=http://localhost:5173  # Comma-separated list of allowed origins
-
-# Firebase Admin SDK Credentials
-FIREBASE_PROJECT_ID=your_firebase_project_id
-FIREBASE_CLIENT_EMAIL=your_firebase_client_email
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n..."
-
-# Deepgram Integration
-DEEPGRAM_API_KEY=your_deepgram_api_key
-
-# Payment Integration
-RAZORPAY_KEY_ID=your_razorpay_key_id
-RAZORPAY_KEY_SECRET=your_razorpay_key_secret
 ```
 
 ### 2. Set Up the Frontend
@@ -163,7 +140,6 @@ sequenceDiagram
     actor User as Candidate
     participant FE as Frontend (React)
     participant BE as Backend (Express)
-    participant DG as Deepgram (via WS)
     participant AI as OpenRouter AI
 
     User->>FE: 1. Input parameters & Upload Resume PDF
@@ -179,10 +155,8 @@ sequenceDiagram
     loop For Question 1 to N
         FE->>User: Play video avatar & TTS Question
         alt Speak Answer (Voice Mode)
-            FE->>BE: Connect Web Socket: WS /api/deepgram/live
-            BE->>DG: Pipe audio buffer to Deepgram WS
-            DG-->>BE: Real-time Transcript stream
-            BE-->>FE: Live STT transcript display
+            FE->>FE: Webkit Speech Recognition (STT)
+            FE-->>User: Live STT transcript display
         else Type Answer (Text Mode)
             User->>FE: Type answer directly in Textarea
         end
@@ -194,7 +168,7 @@ sequenceDiagram
             FE->>BE: POST /api/interview/follow-up
             BE->>AI: Generate relevant follow-up question
             AI-->>BE: Follow-up question JSON
-            BE-->>FE: Speaks follow-up to user
+            BE-->>FE: Speaks follow-up to user (adds question to list)
         end
     end
     FE->>BE: POST /api/interview/finish
@@ -224,24 +198,15 @@ Below is a summary of the available API namespaces:
 * `GET /api/user/current-user` - Returns the authenticated user's profile and credits.
 
 ### Interview Management (`/api/interview`)
-* `POST /api/interview/resume` - Accepts a resume PDF via Multer, saves a compressed version to the resume database, extracts textual data using `pdfjs-dist`, and structures details via AI.
-* `POST /api/interview/generate-questions` - Creates N customized questions (combining difficulty level with resume projects), constructs an `Interview` entry, and deducts credits (10 credits per question).
-* `POST /api/interview/submit-answer` - Grades the current response graded across 3 dimensions (0-10 scale), logs history, and gives 10-15 word feedback.
+* `POST /api/interview/resume` - Accepts a resume PDF via Multer, extracts textual data using `pdfjs-dist`, and calls AI to get role/experience/projects/skills JSON.
+* `POST /api/interview/generate-questions` - Generate 5 questions, deduct 50 credits, create Interview doc.
+* `POST /api/interview/submit-answer` - AI evaluates answer → confidence/communication/correctness/score/feedback.
 * `POST /api/interview/follow-up` - Dynamically generates follow-up context in response to weak answers.
-* `POST /api/interview/share/:id` - Creates/registers a public share key for an interview session report.
-* `POST /api/interview/finish` - Signals completion, generates a session summary, classifies topics, compiles weak categories into an improvement plan, and returns final scores.
-* `GET /api/interview/get-interviews` - Lists historical user interviews.
-* `GET /api/interview/progress` - Loads the latest draft of incomplete sessions.
-* `GET /api/interview/resume/:id` - Restores and resumes an incomplete interview from the draft state.
-* `GET /api/interview/report/:id` - Fetches the complete private report.
-* `GET /api/interview/public/:id` - Fetches report details for public viewing (bypasses auth gate).
-
-### Payment Operations (`/api/payment`)
-* `POST /api/payment/order` - Generates a Razorpay payment order for purchasing credit plans.
-* `POST /api/payment/verify` - Verifies Razorpay HMAC signature and increments user's credits upon confirmation.
-
-### WebSockets (`/api/deepgram/live`)
-* `WS /api/deepgram/live` - Proxies raw microphone input to Deepgram live API, returning real-time transcription data.
+* `POST /api/interview/finish` - Avg all question scores, mark interview Completed, return aggregated scores.
+* `GET /api/interview/get-interviews` - List all interviews (summary fields only), sorted newest first.
+* `GET /api/interview/progress` - Loads historical data showing progress over time.
+* `GET /api/interview/resume/:id` - Restores and resumes an incomplete interview.
+* `GET /api/interview/report/:id` - Full interview report with per-question scores + feedback.
 
 ### Routing Fallbacks
 * **Frontend Wildcard Routing**: Any unmatched client path (`*`) is routed to the new custom `NotFound` page using React Router.
