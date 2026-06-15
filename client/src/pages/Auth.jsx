@@ -87,7 +87,7 @@ const Auth = ({ isModel = false }) => {
             <RiRobot3Fill size={22} />
           </span>
           <span>
-            <span className="block font-semibold tracking-[-0.02em]">Naam</span>
+            <span className="block font-semibold tracking-[-0.02em]">IntervuAI</span>
             <span className="mt-0.5 block text-[10px] font-medium uppercase tracking-[0.16em] text-gray-400">Interview coach</span>
           </span>
         </div>
