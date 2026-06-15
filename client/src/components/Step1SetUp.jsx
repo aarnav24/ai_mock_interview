@@ -20,6 +20,7 @@ const Step1SetUp = ({ onStart, onResume }) => {
     const [resumeFile, setResumeFile] = useState(null)
     const [loading, setLoading] = useState(false)
     const [skills, setSkills] = useState([])
+    const [projects, setProjects] = useState([])
     const [resumeText, setResumeText] = useState("")
     const [analysisDone, setAnalysisDone] = useState(false)
     const [analyzing, setAnalyzing] = useState(false)
@@ -56,6 +57,7 @@ const Step1SetUp = ({ onStart, onResume }) => {
         try {
             const result = await axios.post(ServerUrl + "/api/interview/resume", formdata, { withCredentials: true })
             setSkills(result.data.skills || [])
+            setProjects(result.data.projects || [])
             setResumeText(result.data.resumeText || "")
             setResumeSummary(result.data.experience || "")
             setAnalysisDone(true)
@@ -72,7 +74,7 @@ const Step1SetUp = ({ onStart, onResume }) => {
         try {
             const result = await axios.post(
                 ServerUrl + "/api/interview/generate-questions",
-                { role, experience, mode, resumeText, skills, count: questionCount },
+                { role, experience, mode, resumeText, skills, projects, count: questionCount },
                 { withCredentials: true }
             )
 
@@ -304,6 +306,7 @@ const Step1SetUp = ({ onStart, onResume }) => {
                                                     setExperience(res.experience || "")
                                                     setFetchedResumeName(res.originalName || "resume.pdf")
                                                     setSkills(res.skills || [])
+                                                    setProjects(res.projects || [])
                                                     setResumeText(res.resumeText || "")
                                                     setResumeSummary(res.experience || "")
                                                     setAnalysisDone(true)
@@ -386,6 +389,7 @@ const Step1SetUp = ({ onStart, onResume }) => {
                                             setResumeFile(null)
                                             setFetchedResumeName("")
                                             setSkills([])
+                                            setProjects([])
                                             setResumeText("")
                                             setAnalysisDone(false)
                                         }}
@@ -398,6 +402,16 @@ const Step1SetUp = ({ onStart, onResume }) => {
                                     <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-emerald-800">Experience Summary</p>
                                     <p className="text-sm text-gray-700 leading-relaxed bg-white rounded-xl border border-emerald-100 p-3 shadow-sm">{resumeSummary || "None specified"}</p>
                                 </div>
+                                {projects.length > 0 && (
+                                    <div>
+                                        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-emerald-800">Projects</p>
+                                        <ul className="list-disc list-inside space-y-1.5 text-sm text-gray-700 bg-white rounded-xl border border-emerald-100 p-3 shadow-sm">
+                                            {projects.map((p, i) => (
+                                                <li key={i}>{p}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
                                 {skills.length > 0 && (
                                     <div>
                                         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-emerald-800">Skills</p>

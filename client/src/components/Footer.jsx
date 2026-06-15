@@ -88,7 +88,7 @@ const Footer = () => {
         </div>
 
         <div className="flex flex-col gap-2 border-t border-white/10 px-6 py-5 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between sm:px-10 lg:px-12">
-          <p>© {new Date().getFullYear()} Naam. Practice with purpose.</p>
+          <p>© {new Date().getFullYear()} IntervuAI. Practice with purpose.</p>
           <p>Built to help you ace your next interview.</p>
         </div>
       </div>
