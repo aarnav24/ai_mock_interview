@@ -78,7 +78,7 @@ const Footer = () => {
           </div>
 
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Why Naam</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Why IntervuAI</h3>
             <div className="mt-5 flex flex-col gap-3 text-sm text-gray-300">
               <span className="flex items-center gap-2"><BsShieldCheck className="text-emerald-400" /> Interactive interview</span>
               <span>Resume-based questions</span>
