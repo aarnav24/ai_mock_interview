@@ -1,0 +1,468 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "IntervuAI API Documentation",
+    "version": "1.0.0",
+    "description": "Interactive Swagger documentation for the IntervuAI backend API endpoints, covering authentication, user profiles, interview session management, payment integrations, and WebSockets."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000",
+      "description": "Local Development Server"
+    },
+    {
+      "url": "https://ai-mock-interview-jft7.onrender.com",
+      "description": "Production Render Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "token",
+        "description": "HTTP-only cookie containing JWT auth session."
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "name": { "type": "string" },
+          "email": { "type": "string" },
+          "credits": { "type": "integer" }
+        }
+      },
+      "Question": {
+        "type": "object",
+        "properties": {
+          "question": { "type": "string" },
+          "difficulty": { "type": "string" },
+          "timeLimit": { "type": "integer" },
+          "answer": { "type": "string" },
+          "feedback": { "type": "string" },
+          "topic": { "type": "string" },
+          "isFollowUp": { "type": "boolean" },
+          "parentQuestionIndex": { "type": "integer", "nullable": true },
+          "score": { "type": "integer" },
+          "confidence": { "type": "integer" },
+          "communication": { "type": "integer" },
+          "correctness": { "type": "integer" }
+        }
+      },
+      "Resume": {
+        "type": "object",
+        "properties": {
+          "resumeId": { "type": "string" },
+          "role": { "type": "string" },
+          "experience": { "type": "string" },
+          "projects": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "skills": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "resumeText": { "type": "string" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/auth/google": {
+      "post": {
+        "summary": "Firebase Google Login / Sign Up",
+        "description": "Verifies the Firebase ID Token on the backend, authenticates or registers the user, and issues an HTTP-only token cookie.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["idToken"],
+                "properties": {
+                  "idToken": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User logged in successfully.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/User" }
+              }
+            }
+          },
+          "400": { "description": "Invalid payload parameters." }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "get": {
+        "summary": "Log out candidate session",
+        "description": "Clears the JWT session cookie.",
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Logged out successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/current-user": {
+      "get": {
+        "summary": "Get authenticated user profile",
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Profile data fetched.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/User" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized access." }
+        }
+      }
+    },
+    "/api/interview/resume": {
+      "post": {
+        "summary": "Upload and analyze PDF Resume",
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["resume"],
+                "properties": {
+                  "resume": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Resume PDF file to upload (Max 5MB)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resume parsed and profile extracted successfully.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Resume" }
+              }
+            }
+          },
+          "400": { "description": "Missing file or invalid upload format." }
+        }
+      }
+    },
+    "/api/interview/last-resume": {
+      "get": {
+        "summary": "Get latest uploaded resume metadata",
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Resume" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/interview/all-resumes": {
+      "get": {
+        "summary": "List all uploaded resumes",
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "resumeId": { "type": "string" },
+                    "originalName": { "type": "string" },
+                    "role": { "type": "string" },
+                    "experience": { "type": "string" },
+                    "createdAt": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/interview/generate-questions": {
+      "post": {
+        "summary": "Start mock interview session",
+        "description": "Deducts 10 credits per question and initializes custom questions based on resume profiles.",
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["role", "experience", "mode"],
+                "properties": {
+                  "role": { "type": "string" },
+                  "experience": { "type": "string" },
+                  "mode": { "type": "string", "enum": ["Technical", "HR"] },
+                  "resumeText": { "type": "string" },
+                  "skills": { "type": "array", "items": { "type": "string" } },
+                  "projects": { "type": "array", "items": { "type": "string" } },
+                  "count": { "type": "integer", "default": 5 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Questions generated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "interviewId": { "type": "string" },
+                    "creditsLeft": { "type": "integer" },
+                    "userName": { "type": "string" },
+                    "questions": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Question" }
+                    },
+                    "role": { "type": "string" },
+                    "experience": { "type": "string" },
+                    "mode": { "type": "string" },
+                    "skills": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Insufficient credits or bad parameters." }
+        }
+      }
+    },
+    "/api/interview/submit-answer": {
+      "post": {
+        "summary": "Submit single question response",
+        "description": "Submits the text transcript answer for a question and scores it via AI.",
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["interviewId", "questionIndex", "answer", "timeTaken"],
+                "properties": {
+                  "interviewId": { "type": "string" },
+                  "questionIndex": { "type": "integer" },
+                  "answer": { "type": "string" },
+                  "timeTaken": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "feedback": { "type": "string" },
+                    "score": { "type": "integer" },
+                    "followUpTrigger": { "type": "string", "nullable": true }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/interview/follow-up": {
+      "post": {
+        "summary": "Generate a dynamic follow-up question",
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["interviewId", "questionIndex", "answer", "score", "trigger"],
+                "properties": {
+                  "interviewId": { "type": "string" },
+                  "questionIndex": { "type": "integer" },
+                  "answer": { "type": "string" },
+                  "score": { "type": "integer" },
+                  "trigger": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "question": { "$ref": "#/components/schemas/Question" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/interview/finish": {
+      "post": {
+        "summary": "Finish interview session",
+        "description": "Calculates overall aggregates, AI summary feedback, and improvement plan topics.",
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["interviewId"],
+                "properties": {
+                  "interviewId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Aggregated report session generated."
+          }
+        }
+      }
+    },
+    "/api/interview/report/{id}": {
+      "get": {
+        "summary": "Fetch private report details",
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Report successfully retrieved." }
+        }
+      }
+    },
+    "/api/payment/order": {
+      "post": {
+        "summary": "Create Razorpay transaction order",
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["planId"],
+                "properties": {
+                  "planId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "entity": { "type": "string" },
+                    "amount": { "type": "integer" },
+                    "currency": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payment/verify": {
+      "post": {
+        "summary": "Verify Razorpay signature details",
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["razorpay_order_id", "razorpay_payment_id", "razorpay_signature"],
+                "properties": {
+                  "razorpay_order_id": { "type": "string" },
+                  "razorpay_payment_id": { "type": "string" },
+                  "razorpay_signature": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "credits": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
