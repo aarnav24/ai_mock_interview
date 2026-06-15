@@ -64,6 +64,7 @@ const Step2Interview = ({ interviewData, onFinish }) => {
     const analyserRef = useRef(null)
     const rafRef = useRef(null)
     const hasFollowUpRef = useRef(false)
+    const streamRef = useRef(null)
 
     const currentQuestion = questions[currentIndex]
 
@@ -92,8 +93,11 @@ const Step2Interview = ({ interviewData, onFinish }) => {
 
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
             mediaRecorderRef.current.stop()
-            mediaRecorderRef.current.stream?.getTracks().forEach(t => t.stop())
             mediaRecorderRef.current = null
+        }
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(t => t.stop())
+            streamRef.current = null
         }
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
             wsRef.current.close()
@@ -221,6 +225,7 @@ const Step2Interview = ({ interviewData, onFinish }) => {
             }
             setCanAnswer(true)
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+            streamRef.current = stream
 
             // Audio volume analyser
             const audioCtx = new AudioContext()
@@ -248,6 +253,22 @@ const Step2Interview = ({ interviewData, onFinish }) => {
             ws.onclose = () => flushPending()
             ws.onerror = (err) => console.error("[websocket] client error:", err)
 
+            ws.onopen = () => {
+                const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"]
+                    .find(t => MediaRecorder.isTypeSupported(t)) || ""
+
+                const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {})
+                mediaRecorderRef.current = recorder
+
+                recorder.ondataavailable = (e) => {
+                    if (e.data.size > 0 && ws.readyState === WebSocket.OPEN) {
+                        ws.send(e.data)
+                    }
+                }
+
+                recorder.start(250)
+            }
+
             ws.onmessage = (event) => {
                 try {
                     const msg = JSON.parse(event.data)
@@ -264,18 +285,6 @@ const Step2Interview = ({ interviewData, onFinish }) => {
                     }
                 } catch { /* ignore parse errors */ }
             }
-
-            const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"]
-                .find(t => MediaRecorder.isTypeSupported(t)) || ""
-
-            const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {})
-            mediaRecorderRef.current = recorder
-
-            recorder.ondataavailable = (e) => {
-                if (e.data.size > 0 && ws.readyState === WebSocket.OPEN) ws.send(e.data)
-            }
-
-            recorder.start(250)
         } catch (err) {
             console.error("[mic] startMic error:", err)
         }
