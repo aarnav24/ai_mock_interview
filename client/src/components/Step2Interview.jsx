@@ -212,6 +212,7 @@ const Step2Interview = ({ interviewData, onFinish }) => {
 
     const startMic = useCallback(async () => {
         if (isSubmitting || feedback || isIntroPhase) return
+        if (wsRef.current) return
 
         try {
             if (window.speechSynthesis) {
@@ -281,18 +282,16 @@ const Step2Interview = ({ interviewData, onFinish }) => {
     }, [canAnswer, isAIPlaying, isSubmitting, feedback, flushPending])
 
     const toggleMic = useCallback(() => {
-        if (isMicOnRef.current) {
-            stopMic()
-            setIsMicOn(false)
-        } else {
-            setIsMicOn(true)
-            startMic()
-        }
-    }, [startMic, stopMic])
+        setIsMicOn(prev => !prev)
+    }, [])
 
     useEffect(() => {
-        if (canAnswer && isMicOn && !isAIPlaying) startMic()
-    }, [canAnswer, isAIPlaying, isMicOn, startMic])
+        if (canAnswer && isMicOn && !isAIPlaying) {
+            startMic()
+        } else {
+            stopMic()
+        }
+    }, [canAnswer, isAIPlaying, isMicOn, startMic, stopMic])
 
     useEffect(() => {
         return () => {
